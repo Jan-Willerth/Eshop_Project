@@ -1,0 +1,17 @@
+# Virtual environment
+.venv/
+
+# PyCharm / IDE settings
+.idea/
+
+# Python byte-compiled / cache files
+__pycache__/
+*.py[cod]
+
+# Local database and media uploads
+*.sqlite3
+media/
+
+# Operating system files
+.DS_Store
+Thumbs.db

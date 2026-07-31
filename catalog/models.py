@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.text import slugify
 
 
 class VatRate(models.Model):
@@ -38,7 +39,7 @@ class User(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=150)
-    slug = models.SlugField(max_length=150, unique=True)
+    slug = models.SlugField(max_length=150, unique=True, blank=True)
     is_active = models.BooleanField(default=True)
     parent = models.ForeignKey(
         'self',
@@ -51,6 +52,11 @@ class Category(models.Model):
 
     class Meta:
         verbose_name_plural = 'Categories'
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -87,7 +93,7 @@ class PaymentMethod(models.Model):
 
 class Product(models.Model):
     name = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255, unique=True)
+    slug = models.SlugField(max_length=255, unique=True, blank=True)
     description = models.TextField(blank=True, null=True)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
     package_weight = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
@@ -110,6 +116,7 @@ class Product(models.Model):
     is_active = models.BooleanField(default=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
+    image = models.ImageField(upload_to='products/', blank=True, null=True)
 
     @property
     def price_gross(self):
@@ -117,6 +124,11 @@ class Product(models.Model):
         if self.vat_rate and self.vat_rate.rate:
             return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
         return self.price_net
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

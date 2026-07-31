@@ -49,6 +49,9 @@ class Category(models.Model):
         db_column='parent_id'
     )
 
+    class Meta:
+        verbose_name_plural = 'Categories'
+
     def __str__(self):
         return self.name
 
@@ -87,14 +90,33 @@ class Product(models.Model):
     slug = models.SlugField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
-    weight = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    length = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    width = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    height = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    package_weight = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                         verbose_name="Package weight (g)")
+    package_height = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                         verbose_name="Package height (mm)")
+    package_width = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                        verbose_name="Package width (mm)")
+    package_length = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                         verbose_name="Package length (mm)")
+    product_weight = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                         verbose_name="Product weight (g)")
+    product_height = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                         verbose_name="Product height (mm)")
+    product_width = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                        verbose_name="Product width (mm)")
+    product_length = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                         verbose_name="Product length (mm)")
     stock = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
+
+    @property
+    def price_gross(self):
+        """Calculates the price including VAT."""
+        if self.vat_rate and self.vat_rate.rate:
+            return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
+        return self.price_net
 
     def __str__(self):
         return self.name

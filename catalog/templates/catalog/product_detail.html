@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.name }} | E-shop{% endblock %}
+
+{% block content %}
+    <h1>{{ product.name }}</h1>
+    <p><strong>Cena:</strong> {{ product.price }} Kč</p>
+    <p>{{ product.description }}</p>
+    <p><a href="{% url 'catalog:product_list' %}">&larr; Zpět na katalog</a></p>
+{% endblock %}

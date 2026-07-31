@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Katalog produktů | E-shop{% endblock %}
+
+{% block content %}
+    <h1>Katalog produktů</h1>
+
+    {% if products %}
+        <ul>
+            {% for product in products %}
+                <li>
+                    <a href="{% url 'catalog:product_detail' slug=product.slug %}">
+                        {{ product.name }}
+                    </a>
+                    - {{ product.price }} Kč
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Zatím zde nejsou žádné produkty.</p>
+    {% endif %}
+{% endblock %}

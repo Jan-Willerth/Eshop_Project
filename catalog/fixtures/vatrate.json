@@ -1,0 +1,5 @@
+[
+  {"model": "catalog.vatrate", "pk": 1, "fields": {"rate": "21.00", "label": "21 %", "is_active": true}},
+  {"model": "catalog.vatrate", "pk": 2, "fields": {"rate": "15.00", "label": "15 %", "is_active": true}},
+  {"model": "catalog.vatrate", "pk": 3, "fields": {"rate": "0.00", "label": "0 %", "is_active": true}}
+]

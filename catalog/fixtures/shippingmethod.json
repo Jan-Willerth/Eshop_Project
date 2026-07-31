@@ -1,0 +1,8 @@
+[
+  {"model": "catalog.shippingmethod", "pk": 1, "fields": {"name": "Česká pošta – Balík do ruky", "price_net": "89.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.shippingmethod", "pk": 2, "fields": {"name": "Zásilkovna – výdejní místo", "price_net": "79.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.shippingmethod", "pk": 3, "fields": {"name": "Zásilkovna – domů", "price_net": "109.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.shippingmethod", "pk": 4, "fields": {"name": "PPL – domů", "price_net": "119.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.shippingmethod", "pk": 5, "fields": {"name": "DPD – domů", "price_net": "129.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.shippingmethod", "pk": 6, "fields": {"name": "Česká pošta – Balík na poštu", "price_net": "79.00", "vat_rate": 1, "is_active": true}}
+]

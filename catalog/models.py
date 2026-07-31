@@ -53,11 +53,6 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = 'Categories'
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return self.name
 
@@ -124,11 +119,6 @@ class Product(models.Model):
         if self.vat_rate and self.vat_rate.rate:
             return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
         return self.price_net
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

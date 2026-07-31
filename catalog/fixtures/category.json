@@ -1,0 +1,21 @@
+[
+  {"model": "catalog.category", "pk": 1, "fields": {"name": "Filamenty", "slug": "filamenty", "is_active": true, "parent": null}},
+  {"model": "catalog.category", "pk": 2, "fields": {"name": "3D tiskárny", "slug": "3d-tiskarny", "is_active": true, "parent": null}},
+  {"model": "catalog.category", "pk": 3, "fields": {"name": "Náhradní díly", "slug": "nahradni-dily", "is_active": true, "parent": null}},
+  {"model": "catalog.category", "pk": 4, "fields": {"name": "Příslušenství", "slug": "prislusenstvi", "is_active": true, "parent": null}},
+  {"model": "catalog.category", "pk": 5, "fields": {"name": "Resiny", "slug": "resiny", "is_active": true, "parent": null}},
+  {"model": "catalog.category", "pk": 6, "fields": {"name": "PLA", "slug": "pla", "is_active": true, "parent": 1}},
+  {"model": "catalog.category", "pk": 7, "fields": {"name": "PETG", "slug": "petg", "is_active": true, "parent": 1}},
+  {"model": "catalog.category", "pk": 8, "fields": {"name": "ABS", "slug": "abs", "is_active": true, "parent": 1}},
+  {"model": "catalog.category", "pk": 9, "fields": {"name": "ASA", "slug": "asa", "is_active": true, "parent": 1}},
+  {"model": "catalog.category", "pk": 10, "fields": {"name": "FDM tiskárny", "slug": "fdm-tiskarny", "is_active": true, "parent": 2}},
+  {"model": "catalog.category", "pk": 11, "fields": {"name": "SLA / Resin tiskárny", "slug": "sla-resin-tiskarny", "is_active": true, "parent": 2}},
+  {"model": "catalog.category", "pk": 12, "fields": {"name": "Trysky a sady", "slug": "trysky-a-sady", "is_active": true, "parent": 3}},
+  {"model": "catalog.category", "pk": 13, "fields": {"name": "Tiskové podložky", "slug": "tiskove-podlozky", "is_active": true, "parent": 3}},
+  {"model": "catalog.category", "pk": 14, "fields": {"name": "Motory a kabely", "slug": "motory-a-kabely", "is_active": true, "parent": 3}},
+  {"model": "catalog.category", "pk": 15, "fields": {"name": "Sušičky filamentů", "slug": "susicky-filamentu", "is_active": true, "parent": 4}},
+  {"model": "catalog.category", "pk": 16, "fields": {"name": "Adhezní prostředky", "slug": "adhezni-prostredky", "is_active": true, "parent": 4}},
+  {"model": "catalog.category", "pk": 17, "fields": {"name": "Nářadí pro post-processing", "slug": "naradi-pro-post-processing", "is_active": true, "parent": 4}},
+  {"model": "catalog.category", "pk": 18, "fields": {"name": "Standardní resiny", "slug": "standardni-resiny", "is_active": true, "parent": 5}},
+  {"model": "catalog.category", "pk": 19, "fields": {"name": "Speciální resiny", "slug": "specialni-resiny", "is_active": true, "parent": 5}}
+]

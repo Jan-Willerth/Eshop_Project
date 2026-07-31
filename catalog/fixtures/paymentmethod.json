@@ -1,0 +1,7 @@
+[
+  {"model": "catalog.paymentmethod", "pk": 1, "fields": {"name": "Platba kartou online (GoPay / Comgate)", "price_net": "0.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.paymentmethod", "pk": 2, "fields": {"name": "Platba převodem (bankovní převod)", "price_net": "0.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.paymentmethod", "pk": 3, "fields": {"name": "Apple Pay / Google Pay", "price_net": "0.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.paymentmethod", "pk": 4, "fields": {"name": "Dobírka (platba při převzetí)", "price_net": "35.00", "vat_rate": 1, "is_active": true}},
+  {"model": "catalog.paymentmethod", "pk": 5, "fields": {"name": "Platba na fakturu (pro firmy)", "price_net": "0.00", "vat_rate": 1, "is_active": true}}
+]

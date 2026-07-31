@@ -3,8 +3,62 @@
 {% block title %}{{ product.name }} | E-shop{% endblock %}
 
 {% block content %}
-    <h1>{{ product.name }}</h1>
-    <p><strong>Cena:</strong> {{ product.price }} Kč</p>
-    <p>{{ product.description }}</p>
-    <p><a href="{% url 'catalog:product_list' %}">&larr; Zpět na katalog</a></p>
+<div class="product-detail">
+    <h1 class="product-title">{{ product.name }}</h1>
+
+    <!-- Category info -->
+    <div class="product-category">
+        <strong>Kategorie:</strong>
+        {% if product.category.parent %}
+            {{ product.category.parent.name }} - {{ product.category.name }}
+        {% else %}
+            {{ product.category.name }}
+        {% endif %}
+    </div>
+
+    <!-- Pricing -->
+    <div class="product-pricing">
+        <div class="price-gross"><strong>Cena s DPH:</strong> {{ product.price_gross }} Kč</div>
+        <div class="price-net"><strong>Cena bez DPH:</strong> {{ product.price_net }} Kč</div>
+    </div>
+
+    <!-- Stock -->
+    <div class="product-stock">
+        <strong>Skladem:</strong> {{ product.stock }} ks
+    </div>
+
+    <!-- Description -->
+    {% if product.description %}
+        <div class="product-description">
+            <h3>Popis</h3>
+            <p>{{ product.description }}</p>
+        </div>
+    {% endif %}
+
+    <!-- Technical parameters -->
+    {% if product.product_weight or product.product_height or product.product_width or product.product_length %}
+        <div class="product-parameters">
+            <h3>Parametry produktu</h3>
+            <div class="parameter-list">
+                {% if product.product_weight %}
+                    <div class="parameter-item">Hmotnost: {{ product.product_weight }} g</div>
+                {% endif %}
+                {% if product.product_height %}
+                    <div class="parameter-item">Výška: {{ product.product_height }} mm</div>
+                {% endif %}
+                {% if product.product_width %}
+                    <div class="parameter-item">Šířka: {{ product.product_width }} mm</div>
+                {% endif %}
+                {% if product.product_length %}
+                    <div class="parameter-item">Délka: {{ product.product_length }} mm</div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Navigation -->
+    <div class="product-actions">
+        <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
+    </div>
+</div>
 {% endblock %}

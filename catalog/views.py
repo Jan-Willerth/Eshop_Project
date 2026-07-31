@@ -4,8 +4,10 @@ from .models import Category, Product
 
 
 def product_list(request):
-    products = Product.objects.filter(is_active=True)
-    categories = Category.objects.all()
+    # Select product category and its parent category in one DB query
+    products = Product.objects.filter(is_active=True).select_related('vat_rate', 'category__parent')
+    categories = Category.objects.filter(is_active=True)
+
     return render(request, 'catalog/product_list.html', {
         'products': products,
         'categories': categories,
@@ -13,7 +15,12 @@ def product_list(request):
 
 
 def product_detail(request, slug):
-    product = get_object_or_404(Product, slug=slug, is_active=True)
+    # Fetch product with its category and parent category
+    product = get_object_or_404(
+        Product.objects.select_related('vat_rate', 'category__parent'),
+        slug=slug,
+        is_active=True
+    )
     return render(request, 'catalog/product_detail.html', {
         'product': product,
     })

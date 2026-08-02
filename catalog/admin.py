@@ -10,7 +10,6 @@ from .models import (
 # ===================== VAT RATES =====================
 @admin.register(VatRate)
 class VatRateAdmin(admin.ModelAdmin):
-    """Admin configuration for VAT rates."""
     list_display = ('rate', 'label', 'is_active')
     list_filter = ('is_active',)
     search_fields = ('label',)
@@ -28,24 +27,22 @@ class CategoryAdmin(admin.ModelAdmin):
 
 # ===================== ORDER ITEMS (INLINE) =====================
 class OrderItemInline(admin.TabularInline):
-    """Inline editing for order items inside Order admin."""
+    """Inline view to display order items within the Order detail page."""
     model = OrderItem
-    extra = 0  # No extra empty rows
+    extra = 0  # Prevents rendering empty extra forms by default
     readonly_fields = ('product', 'quantity', 'unit_price_net', 'unit_price_gross', 'vat_rate')
-    can_delete = False  # Prevent deletion from inline (optional)
+    can_delete = False  # Order items should remain historical audit trail
 
 
 # ===================== ORDERS =====================
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    """Admin configuration for orders with customer, pricing, and address details."""
     list_display = ('id', 'customer_email', 'total_price_gross', 'status', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('customer_email', 'id')
     readonly_fields = ('total_price_net', 'total_price_gross', 'created_at')
     inlines = [OrderItemInline]
 
-    # Group fields into logical sections
     fieldsets = (
         (None, {'fields': ('user', 'status', 'shipping_method', 'payment_method')}),
         ('Pricing', {'fields': (
@@ -69,7 +66,6 @@ class OrderAdmin(admin.ModelAdmin):
 # ===================== SHIPPING METHODS =====================
 @admin.register(ShippingMethod)
 class ShippingMethodAdmin(admin.ModelAdmin):
-    """Admin configuration for shipping methods."""
     list_display = ('name', 'price_net', 'vat_rate', 'is_active')
     list_filter = ('is_active', 'vat_rate')
     search_fields = ('name',)
@@ -78,7 +74,6 @@ class ShippingMethodAdmin(admin.ModelAdmin):
 # ===================== PAYMENT METHODS =====================
 @admin.register(PaymentMethod)
 class PaymentMethodAdmin(admin.ModelAdmin):
-    """Admin configuration for payment methods."""
     list_display = ('name', 'price_net', 'vat_rate', 'is_active')
     list_filter = ('is_active', 'vat_rate')
     search_fields = ('name',)
@@ -87,14 +82,12 @@ class PaymentMethodAdmin(admin.ModelAdmin):
 # ===================== PRODUCTS =====================
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    """Admin configuration for products with pricing, stock, dimensions, and image."""
     list_display = ('name', 'category', 'price_net', 'display_price_gross', 'stock', 'is_active')
     list_filter = ('category', 'is_active', 'vat_rate')
     search_fields = ('name', 'slug', 'description')
     prepopulated_fields = {'slug': ('name',)}
-    list_editable = ('price_net', 'stock', 'is_active')  # Quickly edit from list view
+    list_editable = ('price_net', 'stock', 'is_active')
 
-    # Group fields into logical sections
     fieldsets = (
         (None, {'fields': ('name', 'slug', 'description', 'category', 'vat_rate')}),
         ('Pricing', {'fields': ('price_net',)}),
@@ -109,16 +102,15 @@ class ProductAdmin(admin.ModelAdmin):
     )
 
     @admin.display(description='Price gross (incl. VAT)')
-    def display_price_gross(self, obj):
+    def display_price_gross(self, obj: Product) -> str:
         """Return formatted gross price using the model's property."""
         return f"{obj.price_gross:.2f} Kč"
 
 
 # ===================== ORDER ITEMS (STANDALONE) =====================
-# Optional: register OrderItem separately if you want a dedicated list view
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    """Admin configuration for order items (standalone view)."""
+    """Standalone admin view for auditing and searching individual order items across orders."""
     list_display = ('order', 'product', 'quantity', 'unit_price_net', 'unit_price_gross')
-    list_filter = ('order__status',)  # Filter by order status
+    list_filter = ('order__status',)
     search_fields = ('product__name', 'order__customer_email')

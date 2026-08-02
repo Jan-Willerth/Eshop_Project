@@ -7,14 +7,21 @@
 </head>
 <body>
 
-    {% include 'navbar.html' %}
+    <!-- Header & Navigation -->
+    <header class="main-header">
+        {% include 'navbar.html' %}
+    </header>
 
-    <main>
+    <!-- Main Content Area -->
+    <main class="main-content">
         {% block content %}
         {% endblock %}
     </main>
 
-    {% include 'footer.html' %}
+    <!-- Footer -->
+    <footer class="main-footer">
+        {% include 'footer.html' %}
+    </footer>
 
 </body>
 </html>

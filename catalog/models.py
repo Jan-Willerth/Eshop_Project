@@ -1,42 +1,48 @@
+from decimal import Decimal
+
 from django.db import models
 from django.utils.text import slugify
 
 
+# ===================== VAT RATE =====================
 class VatRate(models.Model):
     rate = models.DecimalField(max_digits=5, decimal_places=2)
     label = models.CharField(max_length=50)
     is_active = models.BooleanField(default=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.label} ({self.rate}%)"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<VatRate(id={self.id}, rate={self.rate}, label='{self.label}')>"
 
 
+# ===================== ORDER STATUS =====================
 class OrderStatus(models.Model):
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<OrderStatus(id={self.id}, code='{self.code}')>"
 
 
+# ===================== USER =====================
 class User(models.Model):
     username = models.CharField(max_length=100, unique=True)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=255)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.username
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<User(id={self.id}, username='{self.username}')>"
 
 
+# ===================== CATEGORY =====================
 class Category(models.Model):
     name = models.CharField(max_length=150)
     slug = models.SlugField(max_length=150, unique=True, blank=True)
@@ -53,60 +59,76 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = 'Categories'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Category(id={self.id}, slug='{self.slug}')>"
 
 
+# ===================== SHIPPING METHOD =====================
 class ShippingMethod(models.Model):
     name = models.CharField(max_length=100)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
     is_active = models.BooleanField(default=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<ShippingMethod(id={self.id}, name='{self.name}')>"
 
 
+# ===================== PAYMENT METHOD =====================
 class PaymentMethod(models.Model):
     name = models.CharField(max_length=100)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
     is_active = models.BooleanField(default=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<PaymentMethod(id={self.id}, name='{self.name}')>"
 
 
+# ===================== PRODUCT =====================
 class Product(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     description = models.TextField(blank=True, null=True)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
-    package_weight = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
-                                         verbose_name="Package weight (g)")
-    package_height = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
-                                         verbose_name="Package height (mm)")
-    package_width = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
-                                        verbose_name="Package width (mm)")
-    package_length = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
-                                         verbose_name="Package length (mm)")
-    product_weight = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
-                                         verbose_name="Product weight (g)")
-    product_height = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
-                                         verbose_name="Product height (mm)")
-    product_width = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
-                                        verbose_name="Product width (mm)")
-    product_length = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
-                                         verbose_name="Product length (mm)")
+
+    # Package dimensions
+    package_weight = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Package weight (g)"
+    )
+    package_height = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Package height (mm)"
+    )
+    package_width = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Package width (mm)"
+    )
+    package_length = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Package length (mm)"
+    )
+
+    # Product dimensions
+    product_weight = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Product weight (g)"
+    )
+    product_height = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Product height (mm)"
+    )
+    product_width = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Product width (mm)"
+    )
+    product_length = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Product length (mm)"
+    )
+
     stock = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
@@ -114,27 +136,28 @@ class Product(models.Model):
     image = models.ImageField(upload_to='products/', blank=True, null=True)
 
     @property
-    def price_gross(self):
-        """Calculates the price including VAT."""
+    def price_gross(self) -> Decimal:
+        """Calculates and returns the price including VAT."""
         if self.vat_rate and self.vat_rate.rate:
             return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
         return self.price_net
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Product(id={self.id}, slug='{self.slug}', price_net={self.price_net})>"
 
 
+# ===================== ORDER =====================
 class Order(models.Model):
-    # Nullable for guest checkout according to the diagram
+    # Nullable user allows guest checkout
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
     status = models.ForeignKey(OrderStatus, on_delete=models.PROTECT, related_name='orders')
     shipping_method = models.ForeignKey(ShippingMethod, on_delete=models.PROTECT)
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
 
-    # Price and VAT rate snapshots
+    # Price and VAT rate snapshots at the time of purchase
     shipping_price_net = models.DecimalField(max_digits=10, decimal_places=2)
     shipping_vat_rate = models.DecimalField(max_digits=5, decimal_places=2)
     payment_price_net = models.DecimalField(max_digits=10, decimal_places=2)
@@ -154,7 +177,7 @@ class Order(models.Model):
     shipping_city = models.CharField(max_length=100)
     shipping_zip_code = models.CharField(max_length=20)
 
-    # Billing details (optional if matching shipping address)
+    # Billing details (optional)
     billing_first_name = models.CharField(max_length=100, blank=True, null=True)
     billing_last_name = models.CharField(max_length=100, blank=True, null=True)
     billing_company_name = models.CharField(max_length=150, blank=True, null=True)
@@ -164,13 +187,14 @@ class Order(models.Model):
     billing_city = models.CharField(max_length=100, blank=True, null=True)
     billing_zip_code = models.CharField(max_length=20, blank=True, null=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Order #{self.id} - {self.customer_email}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Order(id={self.id}, customer_email='{self.customer_email}', total_gross={self.total_price_gross})>"
 
 
+# ===================== ORDER ITEM =====================
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
@@ -179,8 +203,8 @@ class OrderItem(models.Model):
     unit_price_gross = models.DecimalField(max_digits=10, decimal_places=2)
     vat_rate = models.DecimalField(max_digits=5, decimal_places=2)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.quantity}x {self.product.name} (Order #{self.order.id})"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<OrderItem(id={self.id}, order_id={self.order_id}, product_id={self.product_id}, qty={self.quantity})>"

@@ -3,67 +3,79 @@
 {% block title %}{{ product.name }} | E-shop{% endblock %}
 
 {% block content %}
-<div class="product-detail">
-    <h1 class="product-title">{{ product.name }}</h1>
-
-    <!-- Category info -->
-    <div class="product-category">
+<article class="product-detail">
+    <!-- Breadcrumb navigation -->
+    <nav aria-label="Drobková navigace" class="product-category">
         <strong>Kategorie:</strong>
         {% if product.category.parent %}
-            {{ product.category.parent.name }} - {{ product.category.name }}
+            {{ product.category.parent.name }} &rsaquo; {{ product.category.name }}
         {% else %}
             {{ product.category.name }}
         {% endif %}
-    </div>
+    </nav>
 
-    <!-- Pricing -->
+    <h1 class="product-title">{{ product.name }}</h1>
+
+    <!-- Pricing & Stock -->
     <div class="product-pricing">
         <div class="price-gross"><strong>Cena s DPH:</strong> {{ product.price_gross|floatformat:"-2" }} Kč</div>
         <div class="price-net"><strong>Cena bez DPH:</strong> {{ product.price_net|floatformat:"-2" }} Kč</div>
     </div>
 
-    <!-- Stock -->
     <div class="product-stock">
         <strong>Skladem:</strong> {{ product.stock }} ks
     </div>
 
-    <!-- Cart -->
-    <div class="btn-add-to-cart">
-        <a href="{% url 'catalog:add_to_cart' product_id=product.id %}">Přidat do košíku</a>
+    <!-- Cart Action (POST form) -->
+    <div class="product-buy-box">
+        <form action="{% url 'catalog:add_to_cart' product_id=product.id %}" method="post" class="add-to-cart-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="quantity">Počet ks:</label>
+                <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ product.stock }}" class="input-quantity">
+            </div>
+            <button type="submit" class="btn-add-to-cart" {% if product.stock < 1 %}disabled{% endif %}>
+                {% if product.stock > 0 %}Přidat do košíku{% else %}Vyprodáno{% endif %}
+            </button>
+        </form>
     </div>
 
     <!-- Description -->
     {% if product.description %}
-        <div class="product-description">
-            <h3>Popis</h3>
-            <p>{{ product.description }}</p>
-        </div>
+        <section class="product-description">
+            <h2>Popis produktu</h2>
+            {{ product.description|linebreaks }}
+        </section>
     {% endif %}
 
-    <!-- Technical parameters -->
+    <!-- Technical parameters (using definition list for semantic markup) -->
     {% if product.product_weight or product.product_height or product.product_width or product.product_length %}
-        <div class="product-parameters">
-            <h3>Parametry produktu</h3>
-            <ul class="parameter-list">
+        <section class="product-parameters">
+            <h2>Parametry produktu</h2>
+            <dl class="parameter-list">
                 {% if product.product_weight %}
-                    <li class="parameter-item"><strong>Hmotnost:</strong> {{ product.product_weight|floatformat:"-2" }} g</li>
+                    <dt>Hmotnost</dt>
+                    <dd>{{ product.product_weight|floatformat:"-2" }} g</dd>
                 {% endif %}
                 {% if product.product_height %}
-                    <li class="parameter-item"><strong>Výška:</strong> {{ product.product_height|floatformat:"-2" }} mm</li>
+                    <dt>Výška</dt>
+                    <dd>{{ product.product_height|floatformat:"-2" }} mm</dd>
                 {% endif %}
                 {% if product.product_width %}
-                    <li class="parameter-item"><strong>Šířka:</strong> {{ product.product_width|floatformat:"-2" }} mm</li>
+                    <dt>Šířka</dt>
+                    <dd>{{ product.product_width|floatformat:"-2" }} mm</dd>
                 {% endif %}
                 {% if product.product_length %}
-                    <li class="parameter-item"><strong>Délka:</strong> {{ product.product_length|floatformat:"-2" }} mm</li>
+                    <dt>Délka</dt>
+                    <dd>{{ product.product_length|floatformat:"-2" }} mm</dd>
                 {% endif %}
-            </ul>
-        </div>
+            </dl>
+        </section>
     {% endif %}
 
-    <!-- Navigation -->
-    <div class="product-actions">
+    <!-- Back button -->
+    <footer class="product-actions">
         <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
-    </div>
-</div>
+    </footer>
+</article>
 {% endblock %}

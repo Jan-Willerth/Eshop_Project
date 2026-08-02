@@ -11,32 +11,60 @@
         <table class="cart-table">
             <thead>
                 <tr>
-                    <th>Produkt</th>
-                    <th>Počet</th>
-                    <th>Cena za kus</th>
-                    <th>Celkem</th>
+                    <th scope="col">Produkt</th>
+                    <th scope="col">Počet</th>
+                    <th scope="col">Cena za kus</th>
+                    <th scope="col">Celkem</th>
+                    <th scope="col"><span class="sr-only">Akce</span></th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
                     <tr class="cart-item">
+                        <!-- Product info & detail link -->
                         <td class="cart-item-info">
-                            <span class="cart-item-name">{{ item.product.name }}</span>
-                            <span class="cart-item-category">
-                                {% if item.product.category.parent %}
-                                    {{ item.product.category.parent.name }} &rsaquo; {{ item.product.category.name }}
-                                {% else %}
-                                    {{ item.product.category.name }}
-                                {% endif %}
-                            </span>
+                            <strong class="cart-item-name">
+                                <a href="{% url 'catalog:product_detail' slug=item.product.slug %}">{{ item.product.name }}</a>
+                            </strong>
+                            <div class="cart-item-category">
+                                <small>
+                                    {% if item.product.category.parent %}
+                                        {{ item.product.category.parent.name }} &rsaquo; {{ item.product.category.name }}
+                                    {% else %}
+                                        {{ item.product.category.name }}
+                                    {% endif %}
+                                </small>
+                            </div>
                         </td>
-                        <td class="cart-item-quantity">{{ item.quantity }} ks</td>
-                        <td class="cart-item-unit-price">{{ item.product.price_gross }} Kč</td>
+
+                        <!-- Quantity form -->
+                        <td class="cart-item-quantity">
+                            <form action="{% url 'catalog:add_to_cart' product_id=item.product.id %}" method="post" class="quantity-form">
+                                {% csrf_token %}
+                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="{{ item.product.stock }}" class="input-quantity">
+                                <button type="submit" class="btn-update" title="Přepočítat">✓</button>
+                            </form>
+                        </td>
+
+                        <!-- Unit price -->
+                        <td class="cart-item-unit-price">
+                            {{ item.product.price_gross|floatformat:"-2" }} Kč
+                        </td>
+
+                        <!-- Subtotals -->
                         <td class="cart-item-price">
-                            <strong>{{ item.subtotal_gross }} Kč</strong>
+                            <strong>{{ item.subtotal_gross|floatformat:"-2" }} Kč</strong>
                             {% if item.subtotal_net != item.subtotal_gross %}
-                                <small>bez DPH: {{ item.subtotal_net }} Kč</small>
+                                <br><small class="price-net">bez DPH: {{ item.subtotal_net|floatformat:"-2" }} Kč</small>
                             {% endif %}
+                        </td>
+
+                        <!-- Remove item form -->
+                        <td class="cart-item-actions">
+                            <form action="#" method="post" class="remove-form">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-remove" title="Odstranit z košíku">&times;</button>
+                            </form>
                         </td>
                     </tr>
                 {% endfor %}
@@ -47,17 +75,19 @@
         <div class="cart-summary">
             <div class="cart-summary-row total-gross">
                 <span>Celkem s DPH:</span>
-                <strong>{{ total_gross }} Kč</strong>
+                <strong>{{ total_gross|floatformat:"-2" }} Kč</strong>
             </div>
-            <div class="cart-summary-row total-net">
-                <small>Celkem bez DPH: {{ total_net }} Kč</small>
-            </div>
+            {% if total_net != total_gross %}
+                <div class="cart-summary-row total-net">
+                    <small>Celkem bez DPH: {{ total_net|floatformat:"-2" }} Kč</small>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Navigation -->
         <div class="cart-actions">
             <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
-            <a href="#" class="btn-checkout">Pokračovat k objednávce</a>
+            <a href="#" class="btn-checkout">Pokračovat k objednávce &rarr;</a>
         </div>
     {% else %}
         <!-- Empty cart message -->

@@ -6,47 +6,48 @@
 <div class="catalog-page">
     <h1 class="catalog-title">Katalog produktů</h1>
 
-    {% if products %}
-        <!-- Product catalog list / grid -->
-        <div class="product-grid">
-            {% for product in products %}
-                <div class="product-card">
-                    <!-- Category -->
-                    <div class="product-category">
-                        <small>
-                            {% if product.category.parent %}
-                                {{ product.category.parent.name }} &rsaquo; {{ product.category.name }}
-                            {% else %}
-                                {{ product.category.name }}
-                            {% endif %}
-                        </small>
-                    </div>
-
-                    <!-- Title -->
-                    <h2 class="product-title" style="margin: 4px 0;">
-                        <a href="{% url 'catalog:product_detail' slug=product.slug %}">{{ product.name }}</a>
-                    </h2>
-
-                    <!-- Price -->
-                    <div class="product-pricing">
-                        <strong>{{ product.price_gross|floatformat:"-2" }} Kč</strong>
-                        {% if product.price_net != product.price_gross %}
-                            <small class="price-net">(bez DPH: {{ product.price_net|floatformat:"-2" }} Kč)</small>
+    <div class="product-grid">
+        {% for product in products %}
+            <article class="product-card">
+                <!-- Category Breadcrumb -->
+                <nav aria-label="Kategorie produktu" class="product-category">
+                    <small>
+                        {% if product.category.parent %}
+                            {{ product.category.parent.name }} &rsaquo; {{ product.category.name }}
+                        {% else %}
+                            {{ product.category.name }}
                         {% endif %}
-                    </div>
+                    </small>
+                </nav>
 
-                    <!-- Actions -->
-                    <div class="product-actions" style="margin-top: 4px;">
-                        <a href="{% url 'catalog:product_detail' slug=product.slug %}" class="btn-detail">Detail</a> |
-                        <a href="{% url 'catalog:add_to_cart' product_id=product.id %}" class="btn-add-to-cart">Do košíku</a>
-                    </div>
+                <!-- Title -->
+                <h2 class="product-title">
+                    <a href="{% url 'catalog:product_detail' slug=product.slug %}">{{ product.name }}</a>
+                </h2>
+
+                <!-- Price -->
+                <div class="product-pricing">
+                    <strong class="price-gross">{{ product.price_gross|floatformat:"-2" }} Kč</strong>
+                    {% if product.price_net != product.price_gross %}
+                        <small class="price-net">(bez DPH: {{ product.price_net|floatformat:"-2" }} Kč)</small>
+                    {% endif %}
                 </div>
-                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ccc;">
-            {% endfor %}
-        </div>
-    {% else %}
-        <!-- Empty list message -->
-        <p class="no-products">Zatím zde nejsou žádné produkty.</p>
-    {% endif %}
+
+                <!-- Actions -->
+                <div class="product-actions">
+                    <a href="{% url 'catalog:product_detail' slug=product.slug %}" class="btn-detail">Detail</a>
+
+                    <!-- POST form for state-changing action -->
+                    <form action="{% url 'catalog:add_to_cart' product_id=product.id %}" method="post" class="add-to-cart-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-add-to-cart">Do košíku</button>
+                    </form>
+                </div>
+            </article>
+        {% empty %}
+            <!-- Empty list message -->
+            <p class="no-products">Zatím zde nejsou žádné produkty.</p>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}

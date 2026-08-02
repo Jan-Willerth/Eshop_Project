@@ -3,23 +3,50 @@
 {% block title %}Katalog produktů | E-shop{% endblock %}
 
 {% block content %}
-    <h1>Katalog produktů</h1>
+<div class="catalog-page">
+    <h1 class="catalog-title">Katalog produktů</h1>
 
     {% if products %}
-        <div class="product-catalog">
+        <!-- Product catalog list / grid -->
+        <div class="product-grid">
             {% for product in products %}
                 <div class="product-card">
-                    {% if product.category.parent %}
-                        {{ product.category.parent.name }} - {{ product.category.name }}
-                    {% else %}
-                        {{ product.category.name }}
-                    {% endif %}
-                    - <a href="{% url 'catalog:product_detail' slug=product.slug %}">{{ product.name }}</a>
-                    - Cena bez DPH: {{ product.price_net }} Kč
+                    <!-- Category -->
+                    <div class="product-category">
+                        <small>
+                            {% if product.category.parent %}
+                                {{ product.category.parent.name }} &rsaquo; {{ product.category.name }}
+                            {% else %}
+                                {{ product.category.name }}
+                            {% endif %}
+                        </small>
+                    </div>
+
+                    <!-- Title -->
+                    <h2 class="product-title" style="margin: 4px 0;">
+                        <a href="{% url 'catalog:product_detail' slug=product.slug %}">{{ product.name }}</a>
+                    </h2>
+
+                    <!-- Price -->
+                    <div class="product-pricing">
+                        <strong>{{ product.price_gross|floatformat:"-2" }} Kč</strong>
+                        {% if product.price_net != product.price_gross %}
+                            <small class="price-net">(bez DPH: {{ product.price_net|floatformat:"-2" }} Kč)</small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="product-actions" style="margin-top: 4px;">
+                        <a href="{% url 'catalog:product_detail' slug=product.slug %}" class="btn-detail">Detail</a> |
+                        <a href="{% url 'catalog:add_to_cart' product_id=product.id %}" class="btn-add-to-cart">Do košíku</a>
+                    </div>
                 </div>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ccc;">
             {% endfor %}
         </div>
     {% else %}
-        <p>Zatím zde nejsou žádné produkty.</p>
+        <!-- Empty list message -->
+        <p class="no-products">Zatím zde nejsou žádné produkty.</p>
     {% endif %}
+</div>
 {% endblock %}

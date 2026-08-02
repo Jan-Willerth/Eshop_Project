@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Košík | E-shop{% endblock %}
+
+{% block content %}
+<div class="cart-detail">
+    <h1 class="cart-title">Košík ({{ total_quantity }} ks)</h1>
+
+    {% if items %}
+        <!-- Cart items table -->
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>Produkt</th>
+                    <th>Počet</th>
+                    <th>Cena za kus</th>
+                    <th>Celkem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr class="cart-item">
+                        <td class="cart-item-info">
+                            <span class="cart-item-name">{{ item.product.name }}</span>
+                            <span class="cart-item-category">
+                                {% if item.product.category.parent %}
+                                    {{ item.product.category.parent.name }} &rsaquo; {{ item.product.category.name }}
+                                {% else %}
+                                    {{ item.product.category.name }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="cart-item-quantity">{{ item.quantity }} ks</td>
+                        <td class="cart-item-unit-price">{{ item.product.price_gross }} Kč</td>
+                        <td class="cart-item-price">
+                            <strong>{{ item.subtotal_gross }} Kč</strong>
+                            {% if item.subtotal_net != item.subtotal_gross %}
+                                <small>bez DPH: {{ item.subtotal_net }} Kč</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Summary block -->
+        <div class="cart-summary">
+            <div class="cart-summary-row total-gross">
+                <span>Celkem s DPH:</span>
+                <strong>{{ total_gross }} Kč</strong>
+            </div>
+            <div class="cart-summary-row total-net">
+                <small>Celkem bez DPH: {{ total_net }} Kč</small>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="cart-actions">
+            <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
+            <a href="#" class="btn-checkout">Pokračovat k objednávce</a>
+        </div>
+    {% else %}
+        <!-- Empty cart message -->
+        <div class="cart-empty-message">
+            <p>Košík je prázdný.</p>
+            <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

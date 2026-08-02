@@ -18,13 +18,18 @@
 
     <!-- Pricing -->
     <div class="product-pricing">
-        <div class="price-gross"><strong>Cena s DPH:</strong> {{ product.price_gross }} Kč</div>
-        <div class="price-net"><strong>Cena bez DPH:</strong> {{ product.price_net }} Kč</div>
+        <div class="price-gross"><strong>Cena s DPH:</strong> {{ product.price_gross|floatformat:"-2" }} Kč</div>
+        <div class="price-net"><strong>Cena bez DPH:</strong> {{ product.price_net|floatformat:"-2" }} Kč</div>
     </div>
 
     <!-- Stock -->
     <div class="product-stock">
         <strong>Skladem:</strong> {{ product.stock }} ks
+    </div>
+
+    <!-- Cart -->
+    <div class="btn-add-to-cart">
+        <a href="{% url 'catalog:add_to_cart' product_id=product.id %}">Přidat do košíku</a>
     </div>
 
     <!-- Description -->
@@ -39,20 +44,20 @@
     {% if product.product_weight or product.product_height or product.product_width or product.product_length %}
         <div class="product-parameters">
             <h3>Parametry produktu</h3>
-            <div class="parameter-list">
+            <ul class="parameter-list">
                 {% if product.product_weight %}
-                    <div class="parameter-item">Hmotnost: {{ product.product_weight }} g</div>
+                    <li class="parameter-item"><strong>Hmotnost:</strong> {{ product.product_weight|floatformat:"-2" }} g</li>
                 {% endif %}
                 {% if product.product_height %}
-                    <div class="parameter-item">Výška: {{ product.product_height }} mm</div>
+                    <li class="parameter-item"><strong>Výška:</strong> {{ product.product_height|floatformat:"-2" }} mm</li>
                 {% endif %}
                 {% if product.product_width %}
-                    <div class="parameter-item">Šířka: {{ product.product_width }} mm</div>
+                    <li class="parameter-item"><strong>Šířka:</strong> {{ product.product_width|floatformat:"-2" }} mm</li>
                 {% endif %}
                 {% if product.product_length %}
-                    <div class="parameter-item">Délka: {{ product.product_length }} mm</div>
+                    <li class="parameter-item"><strong>Délka:</strong> {{ product.product_length|floatformat:"-2" }} mm</li>
                 {% endif %}
-            </div>
+            </ul>
         </div>
     {% endif %}
 

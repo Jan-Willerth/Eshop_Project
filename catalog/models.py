@@ -6,6 +6,8 @@ from django.utils.text import slugify
 
 # ===================== VAT RATE =====================
 class VatRate(models.Model):
+    """Represents a value-added tax (VAT) percentage rate applied to products and services."""
+
     rate = models.DecimalField(max_digits=5, decimal_places=2)
     label = models.CharField(max_length=50)
     is_active = models.BooleanField(default=True)
@@ -19,6 +21,8 @@ class VatRate(models.Model):
 
 # ===================== ORDER STATUS =====================
 class OrderStatus(models.Model):
+    """Represents the operational state of an order (e.g., pending, paid, shipped)."""
+
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
 
@@ -31,6 +35,8 @@ class OrderStatus(models.Model):
 
 # ===================== USER =====================
 class User(models.Model):
+    """Represents a registered user account in the store database."""
+
     username = models.CharField(max_length=100, unique=True)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=255)
@@ -44,6 +50,8 @@ class User(models.Model):
 
 # ===================== CATEGORY =====================
 class Category(models.Model):
+    """Hierarchical product category with self-referential parent support."""
+
     name = models.CharField(max_length=150)
     slug = models.SlugField(max_length=150, unique=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -68,6 +76,8 @@ class Category(models.Model):
 
 # ===================== SHIPPING METHOD =====================
 class ShippingMethod(models.Model):
+    """Available logistics and delivery option for customer checkout."""
+
     name = models.CharField(max_length=100)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
@@ -82,6 +92,8 @@ class ShippingMethod(models.Model):
 
 # ===================== PAYMENT METHOD =====================
 class PaymentMethod(models.Model):
+    """Available payment options supported during customer checkout."""
+
     name = models.CharField(max_length=100)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
@@ -96,12 +108,14 @@ class PaymentMethod(models.Model):
 
 # ===================== PRODUCT =====================
 class Product(models.Model):
+    """Catalog product item with dimensions, pricing, stock tracking, and VAT details."""
+
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     description = models.TextField(blank=True, null=True)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
 
-    # Package dimensions
+    # Package dimensions for shipping calculation
     package_weight = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Package weight (g)"
     )
@@ -115,7 +129,7 @@ class Product(models.Model):
         max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Package length (mm)"
     )
 
-    # Product dimensions
+    # Physical product dimensions
     product_weight = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Product weight (g)"
     )
@@ -129,6 +143,7 @@ class Product(models.Model):
         max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Product length (mm)"
     )
 
+    # Inventory status, categorization, and media
     stock = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
@@ -137,7 +152,7 @@ class Product(models.Model):
 
     @property
     def price_gross(self) -> Decimal:
-        """Calculates and returns the price including VAT."""
+        """Calculate and return the gross price including VAT."""
         if self.vat_rate and self.vat_rate.rate:
             return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
         return self.price_net
@@ -151,13 +166,15 @@ class Product(models.Model):
 
 # ===================== ORDER =====================
 class Order(models.Model):
-    # Nullable user allows guest checkout
+    """Customer order containing price snapshots, delivery details, and billing data."""
+
+    # Nullable user foreign key to support guest checkout
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
     status = models.ForeignKey(OrderStatus, on_delete=models.PROTECT, related_name='orders')
     shipping_method = models.ForeignKey(ShippingMethod, on_delete=models.PROTECT)
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
 
-    # Price and VAT rate snapshots at the time of purchase
+    # Price and VAT rate snapshots frozen at time of purchase
     shipping_price_net = models.DecimalField(max_digits=10, decimal_places=2)
     shipping_vat_rate = models.DecimalField(max_digits=5, decimal_places=2)
     payment_price_net = models.DecimalField(max_digits=10, decimal_places=2)
@@ -168,7 +185,7 @@ class Order(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # Customer and shipping information
+    # Customer identity and primary shipping destination
     customer_email = models.EmailField()
     customer_phone = models.CharField(max_length=50)
     shipping_first_name = models.CharField(max_length=100)
@@ -177,7 +194,7 @@ class Order(models.Model):
     shipping_city = models.CharField(max_length=100)
     shipping_zip_code = models.CharField(max_length=20)
 
-    # Billing details (optional)
+    # Optional business or alternative billing details
     billing_first_name = models.CharField(max_length=100, blank=True, null=True)
     billing_last_name = models.CharField(max_length=100, blank=True, null=True)
     billing_company_name = models.CharField(max_length=150, blank=True, null=True)
@@ -196,6 +213,8 @@ class Order(models.Model):
 
 # ===================== ORDER ITEM =====================
 class OrderItem(models.Model):
+    """Line item within an order storing frozen unit prices and quantity."""
+
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.IntegerField()

@@ -10,6 +10,7 @@ from .models import (
 # ===================== VAT RATES =====================
 @admin.register(VatRate)
 class VatRateAdmin(admin.ModelAdmin):
+    """Admin configuration for value-added tax (VAT) rates."""
     list_display = ('rate', 'label', 'is_active')
     list_filter = ('is_active',)
     search_fields = ('label',)

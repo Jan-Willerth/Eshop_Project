@@ -1,7 +1,17 @@
 <!-- Main navigation -->
-<nav class="navbar">
+<nav class="navbar" style="display: flex; justify-content: space-between; align-items: center;">
     <a href="{% url 'catalog:product_list' %}" class="brand-logo">
         <strong>Můj E-shop</strong>
     </a>
+
+    <!-- Cart link with item count -->
+    <div class="nav-cart">
+        <a href="{% url 'catalog:cart_detail' %}" class="btn-cart">
+            🛒 Košík
+            {% if cart_total_quantity > 0 %}
+                <span class="badge">{{ cart_total_quantity }}</span>
+            {% endif %}
+        </a>
+    </div>
 </nav>
 <hr class="header-divider">

@@ -6,6 +6,9 @@
 <div class="cart-detail">
     <h1 class="cart-title">Košík ({{ total_quantity }} ks)</h1>
 
+    <!-- ========== DIV PRO VAROVÁNÍ O ZÁSOBÁCH ========== -->
+    <div id="stock-warning" class="stock-warning" style="display: none; color: #e67e22; margin: 10px 0; padding: 10px; border: 1px solid #e67e22; border-radius: 5px; background-color: #fef9e7;"></div>
+
     {% if items %}
         <!-- Cart items table -->
         <table class="cart-table">
@@ -20,7 +23,7 @@
             </thead>
             <tbody>
                 {% for item in items %}
-                    <tr class="cart-item">
+                    <tr class="cart-item" data-product-id="{{ item.product.id }}">
                         <!-- Product info & detail link -->
                         <td class="cart-item-info">
                             <strong class="cart-item-name">
@@ -37,10 +40,11 @@
                             </div>
                         </td>
 
-                        <!-- Quantity form -->
+                        <!-- ========== QUANTITY FORM ========== -->
                         <td class="cart-item-quantity">
                             <form action="{% url 'catalog:add_to_cart' product_id=item.product.id %}" method="post" class="quantity-form">
                                 {% csrf_token %}
+                                <input type="hidden" name="override" value="on">
                                 <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="{{ item.product.stock }}" class="input-quantity">
                                 <button type="submit" class="btn-update" title="Přepočítat">✓</button>
                             </form>
@@ -59,9 +63,9 @@
                             {% endif %}
                         </td>
 
-                        <!-- Remove item form -->
+                        <!-- ========== REMOVE FORM ========== -->
                         <td class="cart-item-actions">
-                            <form action="#" method="post" class="remove-form">
+                            <form action="{% url 'catalog:cart_remove' product_id=item.product.id %}" method="post" class="remove-form">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-remove" title="Odstranit z košíku">&times;</button>
                             </form>
@@ -97,4 +101,246 @@
         </div>
     {% endif %}
 </div>
+
+<!-- ========================================================== -->
+<!-- ========== JAVASCRIPT PRO AJAX ========== -->
+<!-- ========================================================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded – initializing AJAX cart...');
+
+    // Helper: get CSRF token from cookie
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Function to update cart badge in navbar
+    function updateCartBadge(count) {
+        const badge = document.querySelector('.badge');
+        const cartLink = document.querySelector('.btn-cart');
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
+        } else if (count > 0) {
+            const newBadge = document.createElement('span');
+            newBadge.className = 'badge';
+            newBadge.textContent = count;
+            cartLink.appendChild(newBadge);
+        }
+    }
+
+    // Function to show stock warning
+    function showStockWarning(message) {
+        const warningDiv = document.getElementById('stock-warning');
+        if (warningDiv && message) {
+            warningDiv.textContent = message;
+            warningDiv.style.display = 'block';
+            setTimeout(() => {
+                warningDiv.style.display = 'none';
+            }, 8000);
+        } else if (warningDiv) {
+            warningDiv.style.display = 'none';
+        }
+    }
+
+    // ==========================================================
+    // ========== QUANTITY FORM – AJAX UPDATE ==========
+    // ==========================================================
+    const quantityForms = document.querySelectorAll('.quantity-form');
+    console.log('Found quantity forms:', quantityForms.length);
+
+    quantityForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // ZABRÁNÍ RELOADU STRÁNKY
+            console.log('Quantity form submitted');
+
+            // Sestavení URL pro AJAX (nahradí /add/ za /ajax/update/)
+            const url = this.action.replace('/add/', '/ajax/update/');
+            console.log('AJAX URL:', url);
+
+            const formData = new FormData(this);
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: formData,
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('AJAX response:', data);
+                console.log('DEBUG: data.success =', data.success);
+                if (data.success) {
+                    console.log('=== ZAČÍNÁM AKTUALIZACI DOM ===');
+
+                    // Update cart badge
+                    updateCartBadge(data.cart_total_quantity);
+
+                    // Update totals
+                    const totalGrossElement = document.querySelector('.total-gross strong');
+                    console.log('totalGrossElement:', totalGrossElement);
+                    if (totalGrossElement) {
+                        totalGrossElement.textContent = data.total_gross + ' Kč';
+                        console.log('totalGrossElement.textContent nastaveno na:', totalGrossElement.textContent);
+                    } else {
+                        console.log('totalGrossElement NEBYL NALEZEN!');
+                    }
+
+                    const totalNetElement = document.querySelector('.total-net small');
+                    console.log('totalNetElement:', totalNetElement);
+                    if (totalNetElement && data.total_net) {
+                        totalNetElement.textContent = 'Celkem bez DPH: ' + data.total_net + ' Kč';
+                        console.log('totalNetElement.textContent nastaveno na:', totalNetElement.textContent);
+                    } else {
+                        console.log('totalNetElement NEBYL NALEZEN nebo data.total_net chybí');
+                    }
+
+                    // Update item subtotal
+                    const row = this.closest('tr');
+                    console.log('row:', row);
+                    const subtotalCell = row.querySelector('.cart-item-price strong');
+                    console.log('subtotalCell:', subtotalCell);
+                    if (subtotalCell && data.item_subtotal) {
+                        subtotalCell.textContent = data.item_subtotal + ' Kč';
+                        console.log('subtotalCell.textContent nastaveno na:', subtotalCell.textContent);
+                    } else {
+                        console.log('subtotalCell NEBYL NALEZEN nebo data.item_subtotal chybí');
+                    }
+
+                    // Update quantity input
+                    const qtyInput = row.querySelector('input[name="quantity"]');
+                    console.log('qtyInput:', qtyInput);
+                    if (qtyInput && data.item_quantity) {
+                        qtyInput.value = data.item_quantity;
+                        console.log('qtyInput.value nastaveno na:', qtyInput.value);
+                    } else {
+                        console.log('qtyInput NEBYL NALEZEN nebo data.item_quantity chybí');
+                    }
+
+                    // Show stock warning
+                    showStockWarning(data.stock_warning);
+
+                    // Update title
+                    const title = document.querySelector('.cart-title');
+                    console.log('title:', title);
+                    if (title) {
+                        title.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
+                        console.log('title.textContent nastaveno na:', title.textContent);
+                    } else {
+                        console.log('title NEBYL NALEZEN!');
+                    }
+
+                    console.log('=== AKTUALIZACE DOM DOKONČENA ===');
+                } else {
+                    alert('Chyba: ' + (data.error || 'Nepodařilo se aktualizovat košík.'));
+                }
+            })
+            .catch(error => {
+                console.error('AJAX error:', error);
+                alert('Došlo k chybě při komunikaci se serverem. Zkontroluj konzoli.');
+            });
+        });
+    });
+
+    // ==========================================================
+    // ========== REMOVE FORM – AJAX REMOVE ==========
+    // ==========================================================
+    const removeForms = document.querySelectorAll('.remove-form');
+    console.log('Found remove forms:', removeForms.length);
+
+    removeForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // ZABRÁNÍ RELOADU STRÁNKY
+            console.log('Remove form submitted');
+
+            // Sestavení URL pro AJAX (nahradí /remove/ za /ajax/remove/)
+            const url = this.action.replace('/remove/', '/ajax/remove/');
+            console.log('AJAX URL:', url);
+
+            const row = this.closest('tr');
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('AJAX response:', data);
+                if (data.success) {
+                    // Remove row from DOM
+                    row.remove();
+
+                    // Update cart badge
+                    updateCartBadge(data.cart_total_quantity);
+
+                    // Update totals
+                    const totalGrossElement = document.querySelector('.total-gross strong');
+                    if (totalGrossElement) {
+                        totalGrossElement.textContent = data.total_gross + ' Kč';
+                    }
+                    const totalNetElement = document.querySelector('.total-net small');
+                    if (totalNetElement && data.total_net) {
+                        totalNetElement.textContent = 'Celkem bez DPH: ' + data.total_net + ' Kč';
+                    }
+
+                    // Update title
+                    const title = document.querySelector('.cart-title');
+                    if (title) {
+                        title.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
+                    }
+
+                    // If cart is empty, reload to show empty state
+                    const tbody = document.querySelector('.cart-table tbody');
+                    if (tbody && tbody.children.length === 0) {
+                        console.log('Cart is empty – reloading page...');
+                        location.reload();
+                    }
+                } else {
+                    alert('Chyba: ' + (data.error || 'Nepodařilo se odstranit položku.'));
+                }
+            })
+            .catch(error => {
+                console.error('AJAX error:', error);
+                alert('Došlo k chybě při komunikaci se serverem. Zkontroluj konzoli.');
+            });
+        });
+    });
+
+    console.log('AJAX cart initialized successfully.');
+});
+</script>
+
 {% endblock %}

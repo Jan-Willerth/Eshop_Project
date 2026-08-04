@@ -1,4 +1,5 @@
-from django.http import HttpRequest, HttpResponse
+from decimal import Decimal
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -9,7 +10,6 @@ from .forms import CartAddProductForm
 # ===================== CATALOG VIEWS =====================
 def product_list(request: HttpRequest) -> HttpResponse:
     """Render active product catalog list with optimized category prefetching."""
-    # Select product category and its parent category in one DB query
     products = Product.objects.filter(is_active=True).select_related('vat_rate', 'category__parent')
     categories = Category.objects.filter(is_active=True).select_related('parent')
 
@@ -21,7 +21,6 @@ def product_list(request: HttpRequest) -> HttpResponse:
 
 def product_detail(request: HttpRequest, slug: str) -> HttpResponse:
     """Render active product detail view by unique slug."""
-    # Fetch product with its category and parent category
     product = get_object_or_404(
         Product.objects.select_related('vat_rate', 'category__parent'),
         slug=slug,
@@ -33,6 +32,49 @@ def product_detail(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 # ===================== CART VIEWS =====================
+def _calculate_cart_totals(cart: dict) -> tuple:
+    """
+    Helper function to calculate cart totals.
+    Returns: (items, total_quantity, total_net, total_gross)
+    """
+    product_ids = [int(pid) for pid in cart.keys() if pid.isdigit()]
+    products = Product.objects.filter(id__in=product_ids, is_active=True)
+    products_dict = {p.id: p for p in products}
+
+    items = []
+    total_quantity = 0
+    total_net = Decimal('0.00')
+    total_gross = Decimal('0.00')
+
+    for product_id_str, quantity in cart.items():
+        if not product_id_str.isdigit():
+            continue
+        product_id = int(product_id_str)
+        product = products_dict.get(product_id)
+        if product is None:
+            continue
+
+        quantity = int(quantity) if isinstance(quantity, int) else 1
+        if quantity < 1:
+            quantity = 1
+
+        item_net = product.price_net * quantity
+        item_gross = product.price_gross * quantity
+
+        items.append({
+            'product': product,
+            'quantity': quantity,
+            'subtotal_net': item_net,
+            'subtotal_gross': item_gross,
+        })
+
+        total_quantity += quantity
+        total_net += item_net
+        total_gross += item_gross
+
+    return items, total_quantity, total_net, total_gross
+
+
 @require_POST
 def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
     """Add a product to the cart session or update its quantity using validation form."""
@@ -45,8 +87,9 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
         quantity = form.cleaned_data['quantity']
         override = form.cleaned_data['override']
     else:
+        # FALLBACK: when invalid input, set quantity to 1 and OVERRIDE (not add)
         quantity = 1
-        override = False
+        override = True
 
     cart = request.session.get('cart', {})
     product_key = str(product.id)
@@ -67,12 +110,10 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
 @require_POST
 def cart_remove(request: HttpRequest, product_id: int) -> HttpResponse:
     """Remove a specific product completely from the session cart."""
-    # Fetch product and cart session data
     product = get_object_or_404(Product, id=product_id)
     cart = request.session.get('cart', {})
     product_key = str(product.id)
 
-    # Remove product from cart if present and persist session
     if product_key in cart:
         del cart[product_key]
         request.session['cart'] = cart
@@ -82,9 +123,163 @@ def cart_remove(request: HttpRequest, product_id: int) -> HttpResponse:
 
 
 def cart_detail(request: HttpRequest) -> HttpResponse:
-    """Render the shopping cart detail view."""
-    # Fetch shopping cart contents from current session
+    """
+    Render the shopping cart detail view with full item details and totals.
+    """
     cart = request.session.get('cart', {})
+    product_ids = [int(pid) for pid in cart.keys() if pid.isdigit()]
 
-    # Temporary basic render for cart detail view and test suite compatibility
-    return render(request, 'catalog/cart_detail.html', {'cart': cart})
+    products = Product.objects.filter(id__in=product_ids, is_active=True)
+    products_dict = {p.id: p for p in products}
+
+    items = []
+    total_quantity = 0
+    total_net = Decimal('0.00')
+    total_gross = Decimal('0.00')
+
+    for product_id_str, quantity in cart.items():
+        if not product_id_str.isdigit():
+            continue
+        product_id = int(product_id_str)
+        product = products_dict.get(product_id)
+        if product is None:
+            continue
+
+        quantity = int(quantity) if isinstance(quantity, int) else 1
+        if quantity < 1:
+            quantity = 1
+
+        item_net = product.price_net * quantity
+        item_gross = product.price_gross * quantity
+
+        items.append({
+            'product': product,
+            'quantity': quantity,
+            'subtotal_net': item_net,
+            'subtotal_gross': item_gross,
+        })
+
+        total_quantity += quantity
+        total_net += item_net
+        total_gross += item_gross
+
+    return render(request, 'catalog/cart_detail.html', {
+        'items': items,
+        'total_quantity': total_quantity,
+        'total_net': total_net,
+        'total_gross': total_gross,
+    })
+
+
+# ===================== AJAX CART VIEWS =====================
+def add_to_cart_ajax(request: HttpRequest, product_id: int) -> JsonResponse:
+    """AJAX endpoint for adding product to cart - returns JSON."""
+    product = get_object_or_404(Product, id=product_id, is_active=True)
+    form = CartAddProductForm(request.POST)
+
+    if form.is_valid():
+        quantity = form.cleaned_data['quantity']
+        override = form.cleaned_data['override']
+    else:
+        quantity = 1
+        override = True
+
+    cart = request.session.get('cart', {})
+    product_key = str(product.id)
+
+    if override:
+        cart[product_key] = quantity
+    else:
+        cart[product_key] = cart.get(product_key, 0) + quantity
+
+    request.session['cart'] = cart
+    request.session.modified = True
+
+    # Calculate total quantity
+    total_quantity = sum(
+        qty for key, qty in cart.items()
+        if key.isdigit() and isinstance(qty, int)
+    )
+
+    stock_warning = None
+    if product.stock == 0:
+        stock_warning = "Zboží není skladem. Předpokládaná dodací lhůta 3–5 pracovních dnů."
+    elif product.stock < quantity:
+        stock_warning = (f"Požadované množství ({quantity}) přesahuje skladové zásoby ({product.stock})."
+                         f" Dodací lhůta může být prodloužena.")
+
+    return JsonResponse({
+        'success': True,
+        'cart_total_quantity': total_quantity,
+        'item_quantity': cart[product_key],
+        'stock_warning': stock_warning,
+    })
+
+
+def update_cart_ajax(request: HttpRequest, product_id: int) -> JsonResponse:
+    """AJAX endpoint for updating quantity - returns JSON with recalculated totals."""
+    product = get_object_or_404(Product, id=product_id, is_active=True)
+
+    try:
+        quantity = int(request.POST.get('quantity', 1))
+        if quantity < 1:
+            quantity = 1
+    except (ValueError, TypeError):
+        return JsonResponse({
+            'success': False,
+            'error': 'Quantity must be a positive integer.'
+        }, status=400)
+
+    cart = request.session.get('cart', {})
+    product_key = str(product.id)
+
+    if quantity < 1:
+        if product_key in cart:
+            del cart[product_key]
+    else:
+        cart[product_key] = quantity
+
+    request.session['cart'] = cart
+    request.session.modified = True
+
+    items, total_quantity, total_net, total_gross = _calculate_cart_totals(cart)
+
+    stock_warning = None
+    if product.stock == 0:
+        stock_warning = "Zboží není skladem. Předpokládaná dodací lhůta 3–5 pracovních dnů."
+    elif product.stock < quantity:
+        stock_warning = f"Požadované množství ({quantity}) přesahuje skladové zásoby ({product.stock}). Dodací lhůta může být prodloužena."
+
+    item_subtotal = str(product.price_gross * quantity) if quantity > 0 else '0.00'
+
+    return JsonResponse({
+        'success': True,
+        'cart_total_quantity': total_quantity,
+        'total_gross': str(total_gross),
+        'total_net': str(total_net),
+        'item_subtotal': item_subtotal,
+        'item_quantity': quantity,
+        'stock_warning': stock_warning,
+    })
+
+
+def remove_from_cart_ajax(request: HttpRequest, product_id: int) -> JsonResponse:
+    """AJAX endpoint for removing item - returns JSON with updated totals."""
+    product = get_object_or_404(Product, id=product_id)
+    cart = request.session.get('cart', {})
+    product_key = str(product.id)
+
+    if product_key in cart:
+        del cart[product_key]
+        request.session['cart'] = cart
+        request.session.modified = True
+
+    # Recalculate totals
+    items, total_quantity, total_net, total_gross = _calculate_cart_totals(cart)
+
+    return JsonResponse({
+        'success': True,
+        'cart_total_quantity': total_quantity,
+        'total_gross': str(total_gross),
+        'total_net': str(total_net),
+    })

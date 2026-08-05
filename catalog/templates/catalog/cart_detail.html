@@ -37,6 +37,12 @@
                             <strong class="cart-item-name">
                                 <a href="{% url 'catalog:product_detail' slug=item.product.slug %}">{{ item.product.name }}</a>
                             </strong>
+
+                            <!-- NOVÉ: Vložení znovupoužitelné šablony varování -->
+                            {% if item.quantity > item.product.stock %}
+                                {% include "overstock_warning.html" %}
+                            {% endif %}
+
                             <div class="cart-item-category">
                                 <small>
                                     {% if item.product.category.parent %}

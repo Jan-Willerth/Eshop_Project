@@ -37,15 +37,8 @@
             </div>
 
             <!-- Overstock warning block -->
-            <div id="overstock-warning" style="display: none; background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
-                <p style="margin: 0 0 10px 0;">
-                    ⚠️ <strong>Požadujete více kusů, než máme aktuálně na skladě (skladem {{ product.stock }} ks).</strong><br>
-                    Doba dodání se z důvodu naskladnění prodlouží na <strong>3–5 pracovních dnů</strong>.
-                </p>
-                <label style="cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" name="overstock_confirmed" id="overstock_confirmed" value="true">
-                    Beru na vědomí delší dobu dodání
-                </label>
+            <div id="overstock-warning" style="display: none;">
+                {% include "overstock_warning.html" with quantity=1 stock=product.stock %}
             </div>
 
             <button type="submit" id="submit-btn" class="btn-add-to-cart">
@@ -59,15 +52,16 @@
         const stock = {{ product.stock }};
         const qtyInput = document.getElementById('quantity');
         const warningBox = document.getElementById('overstock-warning');
-        const confirmCheckbox = document.getElementById('overstock_confirmed');
+        const qtySpan = warningBox.querySelector('.qty-val');
+        const confirmCheckbox = warningBox.querySelector('.overstock-checkbox');
         const submitBtn = document.getElementById('submit-btn');
 
         function checkStockLimit() {
             const currentQty = parseInt(qtyInput.value) || 1;
 
             if (currentQty > stock) {
+                if (qtySpan) qtySpan.textContent = currentQty;
                 warningBox.style.display = 'block';
-                // Tlačítko zakážeme, dokud zákazník nezaškrtne checkbox
                 submitBtn.disabled = !confirmCheckbox.checked;
             } else {
                 warningBox.style.display = 'none';
@@ -79,7 +73,7 @@
         qtyInput.addEventListener('input', checkStockLimit);
         qtyInput.addEventListener('change', checkStockLimit);
         confirmCheckbox.addEventListener('change', checkStockLimit);
-        
+
         checkStockLimit();
     });
     </script>

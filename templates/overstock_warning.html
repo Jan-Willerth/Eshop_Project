@@ -1,10 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-
-</body>
-</html>
+<div class="overstock-warning-box" style="background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px; border-radius: 4px; margin: 10px 0;">
+    <p style="margin: 0 0 8px 0;" class="overstock-text">
+        ⚠️ Požadované množství (<span class="qty-val">{% if quantity %}{{ quantity }}{% elif item %}{{ item.quantity }}{% else %}1{% endif %}</span> ks) přesahuje skladové zásoby (skladem <span class="stock-val">{% if stock %}{{ stock }}{% elif item %}{{ item.product.stock }}{% else %}{{ product.stock }}{% endif %}</span> ks). Dodací lhůta může být prodloužena.
+    </p>
+    <label style="cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; margin: 0;">
+        <input type="checkbox" name="overstock_confirmed" class="overstock-checkbox" value="true">
+        Beru na vědomí delší dobu dodání
+    </label>
+</div>

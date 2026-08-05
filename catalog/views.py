@@ -225,6 +225,8 @@ def update_cart_ajax(request: HttpRequest, product_id: int) -> JsonResponse:
 
     item_subtotal = Decimal(product.price_gross * quantity) if quantity > 0 else Decimal('0.00')
 
+    is_overstock = quantity > product.stock
+
     return JsonResponse({
         'success': True,
         'cart_total_quantity': total_quantity,
@@ -233,6 +235,10 @@ def update_cart_ajax(request: HttpRequest, product_id: int) -> JsonResponse:
         'item_subtotal': f"{item_subtotal:.2f}",
         'item_quantity': quantity,
         'stock_warning': stock_warning,
+        # NEW: Send overstock info for dynamic UI updates
+        'is_overstock': is_overstock,
+        'stock': product.stock,
+        'quantity': quantity,
     })
 
 

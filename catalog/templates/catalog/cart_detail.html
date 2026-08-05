@@ -38,10 +38,10 @@
                                 <a href="{% url 'catalog:product_detail' slug=item.product.slug %}">{{ item.product.name }}</a>
                             </strong>
 
-                            <!-- NOVÉ: Vložení znovupoužitelné šablony varování -->
-                            {% if item.quantity > item.product.stock %}
+                            <!-- Overstock warning wrapper for dynamic JS updates -->
+                            <div class="overstock-warning-wrapper" style="{% if item.quantity <= item.product.stock %}display: none;{% endif %}">
                                 {% include "overstock_warning.html" %}
-                            {% endif %}
+                            </div>
 
                             <div class="cart-item-category">
                                 <small>
@@ -171,51 +171,66 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // UPDATE QUANTITY
     document.querySelectorAll('.quantity-form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const url = this.dataset.ajaxUrl || this.action;
-            const csrfToken = this.querySelector('[name=csrfmiddlewaretoken]').value;
-            const formData = new FormData(this);
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const url = this.dataset.ajaxUrl || this.action;
+        const csrfToken = this.querySelector('[name=csrfmiddlewaretoken]').value;
+        const formData = new FormData(this);
 
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': csrfToken,
-                },
-                body: formData,
-            })
-            .then(res => res.ok ? res.json() : Promise.reject(res))
-            .then(data => {
-                if (data.success) {
-                    updateCartBadge(data.cart_total_quantity);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken,
+            },
+            body: formData,
+        })
+        .then(res => res.ok ? res.json() : Promise.reject(res))
+        .then(data => {
+            if (data.success) {
+                updateCartBadge(data.cart_total_quantity);
 
-                    const totalGrossElement = document.querySelector('.total-gross strong');
-                    if (totalGrossElement) totalGrossElement.textContent = data.total_gross + ' Kč';
+                const totalGrossElement = document.querySelector('.total-gross strong');
+                if (totalGrossElement) totalGrossElement.textContent = data.total_gross + ' Kč';
 
-                    const totalNetElement = document.querySelector('.total-net small');
-                    if (totalNetElement && data.total_net) {
-                        totalNetElement.textContent = 'Celkem bez DPH: ' + data.total_net + ' Kč';
-                    }
-
-                    const row = this.closest('tr');
-                    const subtotalCell = row.querySelector('.cart-item-price strong');
-                    if (subtotalCell) subtotalCell.textContent = data.item_subtotal + ' Kč';
-
-                    const qtyInput = row.querySelector('input[name="quantity"]');
-                    if (qtyInput) qtyInput.value = data.item_quantity;
-
-                    showStockWarning(data.stock_warning);
-
-                    const title = document.querySelector('.cart-title');
-                    if (title) title.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
-                } else {
-                    alert('Chyba: ' + (data.error || 'Nepodařilo se aktualizovat košík.'));
+                const totalNetElement = document.querySelector('.total-net small');
+                if (totalNetElement && data.total_net) {
+                    totalNetElement.textContent = 'Celkem bez DPH: ' + data.total_net + ' Kč';
                 }
-            })
-            .catch(err => console.error('AJAX update error:', err));
-        });
+
+                const row = this.closest('tr');
+                const subtotalCell = row.querySelector('.cart-item-price strong');
+                if (subtotalCell) subtotalCell.textContent = data.item_subtotal + ' Kč';
+
+                const qtyInput = row.querySelector('input[name="quantity"]');
+                if (qtyInput) qtyInput.value = data.item_quantity;
+
+                // --- NEW: Toggle overstock warning box dynamically ---
+                const warningWrapper = row.querySelector('.overstock-warning-wrapper');
+                if (warningWrapper) {
+                    const qtySpan = warningWrapper.querySelector('.qty-val');
+                    const checkbox = warningWrapper.querySelector('.overstock-checkbox');
+
+                    if (data.is_overstock) {
+                        if (qtySpan) qtySpan.textContent = data.quantity || data.item_quantity;
+                        warningWrapper.style.display = 'block';
+                    } else {
+                        warningWrapper.style.display = 'none';
+                        if (checkbox) checkbox.checked = false;
+                    }
+                }
+
+                showStockWarning(data.stock_warning);
+
+                const title = document.querySelector('.cart-title');
+                if (title) title.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
+            } else {
+                alert('Chyba: ' + (data.error || 'Nepodařilo se aktualizovat košík.'));
+            }
+        })
+        .catch(err => console.error('AJAX update error:', err));
     });
+});
 
     // REMOVE ITEM
     document.querySelectorAll('.remove-form').forEach(form => {

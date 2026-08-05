@@ -6,17 +6,6 @@
 <div class="cart-detail">
     <h1 class="cart-title">Košík ({{ total_quantity }} ks)</h1>
 
-    <!-- ========== DIV PRO VAROVÁNÍ O ZÁSOBÁCH ========== -->
-    <div id="stock-warning"
-         class="stock-warning"
-         style="display: none;
-         color: #e67e22;
-         margin: 10px 0;
-         padding: 10px;
-         border: 1px solid #e67e22;
-         border-radius: 5px;
-         background-color: #fef9e7;"></div>
-
     {% if items %}
         <!-- Cart items table -->
         <table class="cart-table">
@@ -53,12 +42,7 @@
                                 </small>
                             </div>
                         </td>
-                {% if item.quantity > item.product.stock %}
-                    <div class="overstock-badge" style="color: #e67e22; font-size: 0.85em; margin-top: 5px;">
-                        ⚠️ Požadujete více kusů, než máme aktuálně na skladě ({{ item.quantity }} ks).
-                        Doba dodání se z důvodu naskladnění prodlouží na 3–5 pracovních dnů.
-                    </div>
-                {% endif %}
+
                         <!-- ========== QUANTITY FORM ========== -->
                         <td class="cart-item-quantity">
                             <form action="{% url 'catalog:add_to_cart' product_id=item.product.id %}"

@@ -262,10 +262,10 @@ class CartViewsTestCase(TestCase):
         self.assertTrue(data['success'])
         self.assertEqual(data['item_quantity'], 5)
         self.assertEqual(data['cart_total_quantity'], 5)
-        self.assertEqual(
-            data['total_gross'],
-            str(self.product_limited.price_gross * 5)
-        )
+
+        # Formátováno na 2 desetinná místa
+        expected_total_gross = f"{(self.product_limited.price_gross * 5):.2f}"
+        self.assertEqual(data['total_gross'], expected_total_gross)
 
     def test_remove_from_cart_ajax(self) -> None:
         """Test AJAX remove item returns JSON with updated totals."""
@@ -287,10 +287,10 @@ class CartViewsTestCase(TestCase):
         data = response.json()
         self.assertTrue(data['success'])
         self.assertEqual(data['cart_total_quantity'], 3)  # only secondary remains
-        self.assertEqual(
-            data['total_gross'],
-            str(self.product_secondary.price_gross * 3)
-        )
+
+        # Formátováno na 2 desetinná místa
+        expected_total_gross = f"{(self.product_secondary.price_gross * 3):.2f}"
+        self.assertEqual(data['total_gross'], expected_total_gross)
 
     def test_add_to_cart_ajax_out_of_stock(self) -> None:
         """Test that out-of-stock product returns stock warning."""

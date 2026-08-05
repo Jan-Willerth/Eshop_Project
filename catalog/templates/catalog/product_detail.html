@@ -28,17 +28,61 @@
 
     <!-- Cart Action (POST form) -->
     <div class="product-buy-box">
-        <form action="{% url 'catalog:add_to_cart' product_id=product.id %}" method="post" class="add-to-cart-form">
+        <form action="{% url 'catalog:add_to_cart' product_id=product.id %}" method="post" class="add-to-cart-form" id="buy-form">
             {% csrf_token %}
-            <div class="form-group">
+
+            <div class="form-group" style="margin-bottom: 15px;">
                 <label for="quantity">Počet ks:</label>
-                <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ product.stock }}" class="input-quantity">
+                <input type="number" id="quantity" name="quantity" value="1" min="1" class="input-quantity" style="width: 80px; padding: 5px;">
             </div>
-            <button type="submit" class="btn-add-to-cart" {% if product.stock < 1 %}disabled{% endif %}>
-                {% if product.stock > 0 %}Přidat do košíku{% else %}Vyprodáno{% endif %}
+
+            <!-- Overstock warning block -->
+            <div id="overstock-warning" style="display: none; background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                <p style="margin: 0 0 10px 0;">
+                    ⚠️ <strong>Požadujete více kusů, než máme aktuálně na skladě (skladem {{ product.stock }} ks).</strong><br>
+                    Doba dodání se z důvodu naskladnění prodlouží na <strong>3–5 pracovních dnů</strong>.
+                </p>
+                <label style="cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" name="overstock_confirmed" id="overstock_confirmed" value="true">
+                    Beru na vědomí delší dobu dodání
+                </label>
+            </div>
+
+            <button type="submit" id="submit-btn" class="btn-add-to-cart">
+                Přidat do košíku
             </button>
         </form>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const stock = {{ product.stock }};
+        const qtyInput = document.getElementById('quantity');
+        const warningBox = document.getElementById('overstock-warning');
+        const confirmCheckbox = document.getElementById('overstock_confirmed');
+        const submitBtn = document.getElementById('submit-btn');
+
+        function checkStockLimit() {
+            const currentQty = parseInt(qtyInput.value) || 1;
+
+            if (currentQty > stock) {
+                warningBox.style.display = 'block';
+                // Tlačítko zakážeme, dokud zákazník nezaškrtne checkbox
+                submitBtn.disabled = !confirmCheckbox.checked;
+            } else {
+                warningBox.style.display = 'none';
+                confirmCheckbox.checked = false;
+                submitBtn.disabled = false;
+            }
+        }
+
+        qtyInput.addEventListener('input', checkStockLimit);
+        qtyInput.addEventListener('change', checkStockLimit);
+        confirmCheckbox.addEventListener('change', checkStockLimit);
+        
+        checkStockLimit();
+    });
+    </script>
 
     <!-- Description -->
     {% if product.description %}

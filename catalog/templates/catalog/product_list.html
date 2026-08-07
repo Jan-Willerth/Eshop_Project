@@ -38,9 +38,9 @@
                     <a href="{% url 'catalog:product_detail' slug=product.slug %}" class="btn-detail">Detail</a>
 
                     <!-- POST form for state-changing action -->
-                    <form action="{% url 'catalog:add_to_cart' product_id=product.id %}" method="post" class="add-to-cart-form">
+                    <form action="{% url 'catalog:add_to_cart' product.id %}" method="post" class="add-to-cart-form">
                         {% csrf_token %}
-                        <button type="submit" class="btn-add-to-cart">Do košíku</button>
+                        <button type="submit" class="btn-primary">Do košíku</button>
                     </form>
                 </div>
             </article>

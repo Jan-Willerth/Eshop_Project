@@ -28,20 +28,20 @@
 
     <!-- Cart Action (POST form) -->
     <div class="product-buy-box">
-        <form action="{% url 'catalog:add_to_cart' product_id=product.id %}" method="post" class="add-to-cart-form" id="buy-form">
+        <form action="{% url 'catalog:add_to_cart' product.id %}" method="post" class="add-to-cart-form">
             {% csrf_token %}
 
             <div class="form-group" style="margin-bottom: 15px;">
-                <label for="quantity">Počet ks:</label>
-                <input type="number" id="quantity" name="quantity" value="1" min="1" class="input-quantity" style="width: 80px; padding: 5px;">
+                <label for="id_quantity">Počet ks:</label>
+                <input type="number" id="id_quantity" name="quantity" value="1" min="1" class="input-quantity" style="width: 80px; padding: 5px;">
             </div>
 
             <!-- Overstock warning block -->
             <div id="overstock-warning" style="display: none;">
-                {% include "overstock_warning.html" with quantity=1 stock=product.stock %}
+                {% include "catalog/includes/overstock_warning.html" with quantity=1 stock=product.stock %}
             </div>
 
-            <button type="submit" id="submit-btn" class="btn-add-to-cart">
+            <button type="submit" id="submit-btn" class="btn-primary">
                 Přidat do košíku
             </button>
         </form>

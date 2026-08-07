@@ -29,7 +29,7 @@
 
                             <!-- Overstock warning wrapper for dynamic JS updates -->
                             <div class="overstock-warning-wrapper" style="{% if item.quantity <= item.product.stock %}display: none;{% endif %}">
-                                {% include "overstock_warning.html" %}
+                                {% include "catalog/includes/overstock_warning.html" with quantity=item.quantity stock=item.product.stock %}
                             </div>
 
                             <div class="cart-item-category">

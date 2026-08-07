@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.contrib import messages
 
 from .models import Category, Product
 from .forms import CartAddProductForm
@@ -79,31 +80,60 @@ def _calculate_cart_totals(cart: dict) -> tuple:
 def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
     """Add a product to the cart session or update its quantity using validation form."""
     product = get_object_or_404(Product, id=product_id, is_active=True)
-    form = CartAddProductForm(request.POST, product_stock=product.stock)
+
+    # Pokud v POST data chybí quantity (např. rychlé přidání z katalogu), doplníme výchozí 1
+    post_data = request.POST.copy()
+    if 'quantity' not in post_data:
+        post_data['quantity'] = 1
+    if 'override' not in post_data:
+        post_data['override'] = False
+
+    form = CartAddProductForm(post_data, product_stock=product.stock)
 
     if form.is_valid():
         cd = form.cleaned_data
         quantity = cd['quantity']
         override = cd['override']
+
+        cart = request.session.get('cart', {})
+        product_key = str(product.id)
+
+        if override:
+            cart[product_key] = quantity
+        else:
+            cart[product_key] = cart.get(product_key, 0) + quantity
+
+        request.session['cart'] = cart
+        request.session.modified = True
+
+        # Spočítení celkového počtu kusů pro badge v hlavičce
+        cart_total_quantity = sum(cart.values())
+
+        # AJAX odpověď
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': f'Produkt "{product.name}" byl přidán do košíku.',
+                'product_name': product.name,
+                'cart_total_quantity': cart_total_quantity,
+            })
+
+        messages.success(request, f'Produkt "{product.name}" byl přidán do košíku.')
+        return redirect('catalog:cart_detail')
+
     else:
+        # Chybový stav (např. overstock bez potvrdzujícího checkboxu)
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'error': 'Pro objednání vyššího množství než je skladem musíte potvrdit delší dodací lhůtu.'
+            }, status=400)
+
         messages.error(
             request,
             'Pro objednání vyššího množství než je skladem musíte potvrdit delší dodací lhůtu.'
         )
         return redirect('catalog:product_detail', slug=product.slug)
-
-    cart = request.session.get('cart', {})
-    product_key = str(product.id)
-
-    if override:
-        cart[product_key] = quantity
-    else:
-        cart[product_key] = cart.get(product_key, 0) + quantity
-
-    request.session['cart'] = cart
-    request.session.modified = True
-
-    return redirect('catalog:cart_detail')
 
 
 @require_POST
@@ -144,50 +174,6 @@ def cart_detail(request: HttpRequest) -> HttpResponse:
 
 
 # ===================== AJAX CART VIEWS =====================
-def add_to_cart_ajax(request: HttpRequest, product_id: int) -> JsonResponse:
-    """AJAX endpoint for adding product to cart - returns JSON."""
-    product = get_object_or_404(Product, id=product_id, is_active=True)
-    form = CartAddProductForm(request.POST)
-
-    if form.is_valid():
-        quantity = form.cleaned_data['quantity']
-        override = form.cleaned_data['override']
-    else:
-        quantity = 1
-        override = True
-
-    cart = request.session.get('cart', {})
-    product_key = str(product.id)
-
-    if override:
-        cart[product_key] = quantity
-    else:
-        cart[product_key] = cart.get(product_key, 0) + quantity
-
-    request.session['cart'] = cart
-    request.session.modified = True
-
-    # Calculate total quantity
-    total_quantity = sum(
-        qty for key, qty in cart.items()
-        if key.isdigit() and isinstance(qty, int)
-    )
-
-    stock_warning = None
-    if product.stock == 0:
-        stock_warning = "Zboží není skladem. Předpokládaná dodací lhůta 3–5 pracovních dnů."
-    elif product.stock < quantity:
-        stock_warning = (f"Požadované množství ({quantity}) přesahuje skladové zásoby ({product.stock})."
-                         f" Dodací lhůta může být prodloužena.")
-
-    return JsonResponse({
-        'success': True,
-        'cart_total_quantity': total_quantity,
-        'item_quantity': cart[product_key],
-        'stock_warning': stock_warning,
-    })
-
-
 @require_POST
 def update_cart_ajax(request: HttpRequest, product_id: int) -> JsonResponse:
     """AJAX endpoint for updating quantity - returns JSON with recalculated totals."""

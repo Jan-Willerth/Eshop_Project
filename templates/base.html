@@ -1,3 +1,5 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="cs">
 <head>
@@ -18,10 +20,12 @@
         {% endblock %}
     </main>
 
-    <!-- Footer -->
+   <!-- Footer -->
     <footer class="main-footer">
         {% include 'footer.html' %}
     </footer>
 
+    {% include 'catalog/includes/cart_modal.html' %}
+    <script src="{% static 'catalog/js/cart.js' %}"></script>
 </body>
 </html>

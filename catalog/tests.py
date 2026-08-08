@@ -64,11 +64,9 @@ class CartViewsTestCase(TestCase):
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(url, {'quantity': 15})
 
-        # Should redirect back to product detail, not cart
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse('catalog:product_detail', args=[self.product_limited.slug]), response.url)
 
-        # Cart should remain empty
         session_cart = self.client.session.get('cart', {})
         self.assertNotIn(str(self.product_limited.id), session_cart)
 
@@ -95,7 +93,7 @@ class CartViewsTestCase(TestCase):
         self.client.post(url, {
             'quantity': 7,
             'override': 'on',
-            'overstock_confirmed': True,
+            'overstock_confirmed': True
         })
 
         session_cart = self.client.session.get('cart', {})
@@ -120,8 +118,6 @@ class CartViewsTestCase(TestCase):
 
     def test_invalid_quantity_input_fallback(self) -> None:
         """Invalid inputs (empty, zero, negative, non-numeric) fall back to 1."""
-        from django.test import Client
-
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         invalid_inputs = ['', '0', '-5', 'abc', '   ']
 
@@ -132,15 +128,12 @@ class CartViewsTestCase(TestCase):
             self.assertEqual(session_cart[str(self.product_limited.id)], 1)
 
     def test_quantity_exceeds_max_fallback(self) -> None:
-        """Quantity > 50 is rejected – redirects to product detail, cart stays empty."""
+        """Quantity > 99 is rejected – redirects to product detail, cart stays empty."""
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
-        response = self.client.post(url, {'quantity': '55'})
+        response = self.client.post(url, {'quantity': '100'})
 
-        # Cart must NOT contain the product
         session_cart = self.client.session.get('cart', {})
         self.assertNotIn(str(self.product_limited.id), session_cart)
-
-        # Should redirect back to product detail
         self.assertRedirects(response, reverse('catalog:product_detail', args=[self.product_limited.slug]))
 
     def test_add_to_cart_accumulates(self) -> None:
@@ -228,6 +221,24 @@ class CartViewsTestCase(TestCase):
         self.assertTrue(data['success'])
         self.assertEqual(data['cart_total_quantity'], 2)
         self.assertEqual(data['item_quantity'], 2)
+        # No bulk/overlimit flags for normal quantity
+        self.assertNotIn('is_bulk', data)
+        self.assertNotIn('bulk_warning', data)
+
+    def test_add_to_cart_ajax_over_limit(self) -> None:
+        """AJAX add to cart for >99 pcs returns success=False with error message."""
+        url = reverse('catalog:add_to_cart', args=[self.product_secondary.id])
+        response = self.client.post(
+            url,
+            {'quantity': 100},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+        self.assertIn('error', data)
+        self.assertIn('individuální poptávku', data['error'])
 
     def test_update_cart_ajax(self) -> None:
         """AJAX update quantity (via add_to_cart with override) returns JSON with recalculated totals."""
@@ -282,7 +293,7 @@ class CartViewsTestCase(TestCase):
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(
             url,
-            {'quantity': 1, 'overstock_confirmed': True},  # must confirm even when zero
+            {'quantity': 1, 'overstock_confirmed': True},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest'
         )
         data = response.json()

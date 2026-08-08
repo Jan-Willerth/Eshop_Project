@@ -3,9 +3,11 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from django.utils.safestring import mark_safe
+from django.urls import reverse
 
 from .models import Category, Product
-from .forms import CartAddProductForm
+from .forms import CartAddProductForm, QuoteRequestForm
 from .cart_utils import calculate_cart_totals
 
 
@@ -33,6 +35,35 @@ def product_detail(request: HttpRequest, slug: str) -> HttpResponse:
     })
 
 
+# ===================== QUOTE VIEWS =====================
+def custom_quote(request: HttpRequest) -> HttpResponse:
+    """
+    Display and process the individual quote request form for bulk orders.
+
+    GET – pre-fill product and quantity from query string.
+    POST – validate and save quote request, redirect to product list.
+    """
+    initial = {}
+    if request.method == 'GET':
+        product_id = request.GET.get('product')
+        quantity = request.GET.get('quantity')
+        if product_id:
+            initial['product'] = get_object_or_404(Product, id=product_id, is_active=True)
+        if quantity:
+            initial['quantity'] = quantity
+
+    if request.method == 'POST':
+        form = QuoteRequestForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Vaše poptávka byla odeslána. Budeme vás kontaktovat.')
+            return redirect('catalog:product_list')
+    else:
+        form = QuoteRequestForm(initial=initial)
+
+    return render(request, 'catalog/custom_quote.html', {'form': form})
+
+
 # ===================== CART VIEWS =====================
 @require_POST
 def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
@@ -43,7 +74,6 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
     """
     product = get_object_or_404(Product, id=product_id, is_active=True)
 
-    # Ensure required fields are present in POST
     post_data = request.POST.copy()
     if 'quantity' not in post_data:
         post_data['quantity'] = 1
@@ -68,18 +98,16 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
         request.session['cart'] = cart
         request.session.modified = True
 
-        # Recalculate entire cart for consistent totals
         items, total_qty, total_net, total_gross = calculate_cart_totals(cart)
 
-        # Prepare optional stock warning for the current product
         stock_warning = None
         is_overstock = quantity > product.stock
+
         if product.stock == 0:
             stock_warning = "Zboží není skladem. Předpokládaná dodací lhůta 3–5 pracovních dnů."
         elif is_overstock:
             stock_warning = f"Požadované množství ({quantity}) přesahuje skladové zásoby ({product.stock}). Dodací lhůta může být prodloužena."
 
-        # AJAX response
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             item_subtotal = product.price_gross * quantity if quantity > 0 else Decimal('0.00')
             return JsonResponse({
@@ -96,24 +124,59 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
                 'stock': product.stock,
             })
 
-        # Normal POST – flash message and redirect to cart
         messages.success(request, f'Produkt "{product.name}" byl přidán do košíku.')
         return redirect('catalog:cart_detail')
 
-    # Invalid form (e.g. overstock not confirmed)
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        # Extract overstock error if present
-        error_msg = "Pro objednání vyššího množství než je skladem musíte potvrdit delší dodací lhůtu."
-        if 'overstock_confirmed' in form.errors:
-            error_msg = form.errors['overstock_confirmed'][0]
-        return JsonResponse({'success': False, 'error': error_msg}, status=400)
+    raw_quantity = request.POST.get('quantity', '1')
+    quote_url = reverse('catalog:custom_quote') + f'?product={product.id}&quantity={raw_quantity}'
 
-    # Normal POST error – flash and redirect back to product detail
-    messages.error(
-        request,
-        'Pro objednání vyššího množství než je skladem musíte potvrdit delší dodací lhůtu.'
-    )
-    return redirect('catalog:product_detail', slug=product.slug)
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        error_msg = "Opravte prosím chyby ve formuláři."
+        response_data = {'success': False, 'error': error_msg}
+
+        if 'quantity' in form.errors:
+            error_msg = form.errors['quantity'][0]
+            response_data = {
+                'success': False,
+                'error': error_msg,
+                'quote_url': quote_url,
+                'is_over_limit': True,
+                'over_limit_message': (
+                    f"Pro objednávky nad 99 ks (vámi zadaných {raw_quantity} ks) "
+                    "je nutné individuální posouzení.<br><br>"
+                    "Přejděte prosím na formulář nezávazné poptávky.<br><br>"
+                    "Při objednávce bude vyžadována platba předem a delší dodací lhůta."
+                ),
+            }
+        elif 'overstock_confirmed' in form.errors:
+            error_msg = form.errors['overstock_confirmed'][0]
+            response_data = {'success': False, 'error': error_msg}
+
+        return JsonResponse(response_data, status=400)
+
+    error_msg = "Opravte prosím chyby ve formuláři."
+    if 'quantity' in form.errors:
+        error_msg = form.errors['quantity'][0]
+        error_msg += f' <a href="{quote_url}">Přejít na poptávkový formulář</a>'
+    elif 'overstock_confirmed' in form.errors:
+        error_msg = form.errors['overstock_confirmed'][0]
+    messages.error(request, mark_safe(error_msg))
+
+    # Determine where to redirect based on source of request
+    if request.POST.get('from_cart'):
+        redirect_url = reverse('catalog:cart_detail')
+    else:
+        redirect_url = reverse('catalog:product_detail', args=[product.slug])
+
+    error_msg = "Opravte prosím chyby ve formuláři."
+    if 'quantity' in form.errors:
+        error_msg = form.errors['quantity'][0]
+        error_msg += f' <a href="{quote_url}">Přejít na poptávkový formulář</a>'
+    elif 'overstock_confirmed' in form.errors:
+        error_msg = form.errors['overstock_confirmed'][0]
+
+    messages.error(request, mark_safe(error_msg))
+    return redirect(redirect_url)
 
 
 @require_POST
@@ -134,7 +197,6 @@ def cart_remove(request: HttpRequest, product_id: int) -> HttpResponse:
 
     items, total_qty, total_net, total_gross = calculate_cart_totals(cart)
 
-    # AJAX response
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({
             'success': True,
@@ -148,19 +210,14 @@ def cart_remove(request: HttpRequest, product_id: int) -> HttpResponse:
 
 def cart_detail(request: HttpRequest) -> HttpResponse:
     """
-    Render the shopping cart detail view with full item details, totals,
-    and bulk item status (>50 pcs) for custom quotes.
+    Render the shopping cart detail view with full item details and totals.
     """
     cart = request.session.get('cart', {})
     items, total_quantity, total_net, total_gross = calculate_cart_totals(cart)
-
-    # Check if any item quantity exceeds 50 for special handling
-    has_bulk_items = any(item['quantity'] > 50 for item in items)
 
     return render(request, 'catalog/cart_detail.html', {
         'items': items,
         'total_quantity': total_quantity,
         'total_net': total_net,
         'total_gross': total_gross,
-        'has_bulk_items': has_bulk_items,
     })

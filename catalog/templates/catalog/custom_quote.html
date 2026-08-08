@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Individuální poptávka | E-shop{% endblock %}
+
+{% block content %}
+<div class="quote-form-wrapper">
+    <h1 class="quote-title">Individuální poptávka</h1>
+
+    <div class="quote-intro">
+        <p>Pro objednávky nad 99 ks je nutné individuální posouzení dostupnosti a ceny.<br>
+        Vyplňte prosím níže uvedený formulář.<br>
+        Po jeho odeslání vás budeme kontaktovat s konkrétní nabídkou.</p>
+    </div>
+
+    <p class="quote-notice">
+        <strong>Platba předem:</strong><br>
+        <span class="notice-text">Vzhledem k rozsahu objednávky bude po odsouhlasení nabídky vyžadována <strong>100% platba předem</strong>.</span>
+    </p>
+
+    <p class="quote-notice">
+        <strong>Storno podmínky:</strong><br>
+        <span class="notice-text">Pokud po potvrzení objednávky od smlouvy odstoupíte z jiných důvodů, než je nemožnost plnění z naší strany, bude vám účtován <strong>storno poplatek ve výši 10 % z celkové ceny objednávky</strong> na pokrytí vzniklých nákladů.</span>
+    </p>
+
+    <p class="quote-notice">
+        <strong>Upozornění:</strong><br>
+        <span class="notice-text">Vzhledem k individuální povaze zakázky se na tuto objednávku <strong>nevztahuje</strong> 14denní lhůta pro odstoupení od smlouvy dle § 1837 písm. d) občanského zákoníku. Odesláním formuláře s tímto souhlasíte.</span>
+    </p>
+
+    <form action="{% url 'catalog:custom_quote' %}" method="post" class="quote-form">
+        {% csrf_token %}
+
+        {{ form.product }}
+        {{ form.quantity }}
+
+        <div class="form-group">
+            <label for="{{ form.first_name.id_for_label }}" class="form-label">Jméno</label>
+            {{ form.first_name }}
+            {{ form.first_name.errors }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.last_name.id_for_label }}" class="form-label">Příjmení</label>
+            {{ form.last_name }}
+            {{ form.last_name.errors }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.email.id_for_label }}" class="form-label">E‑mail</label>
+            {{ form.email }}
+            {{ form.email.errors }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.phone.id_for_label }}" class="form-label">Telefon</label>
+            {{ form.phone }}
+            {{ form.phone.errors }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.message.id_for_label }}">Zpráva (nepovinné)</label><br>
+            {{ form.message }}
+            {{ form.message.errors }}
+        </div>
+
+        <div class="form-group form-check">
+            {{ form.agreed_to_terms }}
+            <label for="{{ form.agreed_to_terms.id_for_label }}" class="form-check-label">
+                {{ form.agreed_to_terms.label }}
+            </label>
+            {{ form.agreed_to_terms.errors }}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Odeslat poptávku</button>
+            <a href="{% url 'catalog:product_list' %}" class="btn btn-secondary">&larr; Zpět na katalog</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

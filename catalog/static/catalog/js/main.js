@@ -2,7 +2,7 @@
  * Main frontend logic for the e-shop.
  *
  * Handles:
- *   - AJAX add-to-cart with modal feedback
+ *   - AJAX add-to-cart with modal feedback (overstock warnings)
  *   - Navbar cart badge updates
  *   - Overstock warning on product detail page
  *   - AJAX quantity update and item removal on cart detail page
@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 cartBadge.style.display = 'none';
             }
         } else if (count > 0 && cartLink) {
-            // Create badge if not present
             const newBadge = document.createElement('span');
             newBadge.className = 'badge';
             newBadge.textContent = count;
@@ -54,6 +53,11 @@ document.addEventListener('DOMContentLoaded', function () {
         function checkStockLimit() {
             const currentQty = parseInt(qtyInput.value, 10) || 1;
 
+            if (currentQty > 99) {
+                    overstockWarningBox.style.display = 'none';
+                    submitBtn.disabled = false;
+                    return;
+                }
             if (!isNaN(stockLimit) && currentQty > stockLimit) {
                 if (qtySpan) qtySpan.textContent = currentQty.toString();
                 overstockWarningBox.style.display = 'block';
@@ -72,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (confirmCheckbox) {
             confirmCheckbox.addEventListener('change', checkStockLimit);
         }
-        // Initial check
         checkStockLimit();
     }
 
@@ -85,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ==============================
+        // ==============================
     // 5. AJAX Add to Cart (global listener)
     // ==============================
     document.addEventListener('submit', function (e) {
@@ -104,30 +107,45 @@ document.addEventListener('DOMContentLoaded', function () {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => {
-                if (!response.ok) throw response;
+            .then(async response => {
+                if (!response.ok) {
+                    // Pokus o parsování JSON i z chybové odpovědi
+                    const errorData = await response.json().catch(() => null);
+                    throw { status: response.status, data: errorData };
+                }
                 return response.json();
             })
             .then(data => {
-                if (data.success) {
-                    // Update modal
-                    if (modalProductName) {
-                        modalProductName.textContent = data.message || `"${data.product_name}" byl přidán do košíku.`;
-                    }
-                    // Update badge
-                    updateCartBadge(data.cart_total_quantity);
-                    // Show modal
-                    if (cartModal) {
-                        cartModal.style.display = 'flex';
-                    }
-                } else {
-                    alert(data.error || 'Došlo k chybě.');
+                // Úspěch
+                if (modalProductName) {
+                    modalProductName.textContent = data.message || `"${data.product_name}" byl přidán do košíku.`;
+                }
+
+                updateCartBadge(data.cart_total_quantity);
+
+                if (cartModal) {
+                    cartModal.style.display = 'flex';
                 }
             })
             .catch(error => {
                 console.error('AJAX Add to Cart error:', error);
-                // Fallback: submit form normally
-                form.submit();
+
+                if (error && error.data && error.data.quote_url) {
+                    // Over limit – upravit modál
+                    if (modalProductName) {
+                        modalProductName.innerHTML = error.data.over_limit_message || error.data.error;
+                    }
+                    const goToCartBtn = document.getElementById('btn-go-to-cart');
+                    if (goToCartBtn) {
+                        goToCartBtn.textContent = 'Přejít na formulář poptávky';
+                        goToCartBtn.href = error.data.quote_url;
+                    }
+                    if (cartModal) {
+                        cartModal.style.display = 'flex';
+                    }
+                } else {
+                    alert((error && error.data && error.data.error) || 'Došlo k chybě.');
+                }
             });
         }
     });
@@ -155,10 +173,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(res => res.ok ? res.json() : Promise.reject(res))
             .then(data => {
                 if (data.success) {
-                    // Update badge
                     updateCartBadge(data.cart_total_quantity);
 
-                    // Update totals
                     const totalGrossEl = document.querySelector('.total-gross strong');
                     if (totalGrossEl) totalGrossEl.textContent = data.total_gross + ' Kč';
 
@@ -167,15 +183,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         totalNetEl.textContent = 'Celkem bez DPH: ' + data.total_net + ' Kč';
                     }
 
-                    // Update row subtotal
                     const subtotalCell = row.querySelector('.cart-item-price strong');
                     if (subtotalCell) subtotalCell.textContent = data.item_subtotal + ' Kč';
 
-                    // Update quantity input
                     const qtyInputEl = row.querySelector('input[name="quantity"]');
                     if (qtyInputEl) qtyInputEl.value = data.item_quantity;
 
-                    // Toggle overstock warning
                     const warningWrapper = row.querySelector('.overstock-warning-wrapper');
                     if (warningWrapper) {
                         const qtySpanEl = warningWrapper.querySelector('.qty-val');
@@ -189,16 +202,32 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
 
-                    // Update cart title
                     const titleEl = document.querySelector('.cart-title');
                     if (titleEl) titleEl.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
-                } else {
-                    alert('Chyba: ' + (data.error || 'Nepodařilo se aktualizovat košík.'));
+                 } else {
+                    // Chyba – pokud je quote_url, zobrazit modál
+                    if (data.quote_url) {
+                        if (modalProductName) {
+                            modalProductName.innerHTML = data.over_limit_message || data.error;
+                        }
+                        const goToCartBtn = document.getElementById('btn-go-to-cart');
+                        if (goToCartBtn) {
+                            goToCartBtn.textContent = 'Přejít na formulář poptávky';
+                            goToCartBtn.href = data.quote_url;
+                        }
+                        if (cartModal) {
+                            cartModal.style.display = 'flex';
+                        }
+                        // Vrátit input na původní hodnotu (aby nezůstalo >99)
+                        const originalQty = this.querySelector('input[name="quantity"]').defaultValue;
+                        this.querySelector('input[name="quantity"]').value = originalQty;
+                    } else {
+                        alert('Chyba: ' + (data.error || 'Nepodařilo se aktualizovat košík.'));
+                    }
                 }
             })
             .catch(err => {
                 console.error('AJAX update error:', err);
-                // Fallback
                 form.submit();
             });
         });
@@ -239,7 +268,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     const titleEl = document.querySelector('.cart-title');
                     if (titleEl) titleEl.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
 
-                    // If no rows left, reload to show empty cart
                     const tbody = document.querySelector('.cart-table tbody');
                     if (tbody && tbody.children.length === 0) {
                         location.reload();

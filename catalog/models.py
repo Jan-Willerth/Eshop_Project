@@ -227,3 +227,32 @@ class OrderItem(models.Model):
 
     def __repr__(self) -> str:
         return f"<OrderItem(id={self.id}, order_id={self.order_id}, product_id={self.product_id}, qty={self.quantity})>"
+
+
+# ===================== QUOTE REQUEST =====================
+class QuoteRequest(models.Model):
+    """Stores individual quote requests for bulk orders exceeding standard quantity limits."""
+
+    first_name = models.CharField(max_length=100, default='', verbose_name="Jméno")
+    last_name = models.CharField(max_length=100, default='', verbose_name="Příjmení")
+    email = models.EmailField()
+    phone = models.CharField(max_length=50, blank=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    quantity = models.IntegerField()
+    message = models.TextField(blank=True)
+    agreed_to_terms = models.BooleanField(
+        default=False,
+        verbose_name="Souhlas s podmínkami individuální objednávky"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Poptávka na míru"
+        verbose_name_plural = "Poptávky na míru"
+
+    def __str__(self):
+        return f"Poptávka #{self.id} – {self.first_name} {self.last_name} ({self.quantity} ks)"
+
+    def __repr__(self):
+        return f"<QuoteRequest(id={self.id}, email='{self.email}', processed={self.processed})>"

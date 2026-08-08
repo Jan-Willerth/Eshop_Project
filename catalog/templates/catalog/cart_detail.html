@@ -43,13 +43,14 @@
                             </div>
                         </td>
 
-                        <!-- Quantity form (update via add_to_cart with override=on) -->
+                        <!-- Quantity form -->
                         <td class="cart-item-quantity">
                             <form action="{% url 'catalog:add_to_cart' product_id=item.product.id %}"
                                   method="post"
                                   class="quantity-form">
                                 {% csrf_token %}
                                 <input type="hidden" name="override" value="on">
+                                <input type="hidden" name="from_cart" value="1">
                                 <input type="number" name="quantity" value="{{ item.quantity }}" min="1">
                                 <button type="submit" class="btn-update" title="Přepočítat">✓</button>
                             </form>
@@ -95,24 +96,14 @@
             {% endif %}
         </div>
 
-        <!-- Navigation / Bulk Quote Notice -->
-        {% if has_bulk_items %}
-            <div class="bulk-quote-warning" style="margin: 15px 0; padding: 15px; background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 5px;">
-                <p><strong>Upozornění:</strong> Košík obsahuje položku s množstvím vyšším než 50 ks. Pro velké objednávky je vyžadována platba předem a individuální vyřízení.</p>
-            </div>
-            <div class="cart-actions">
-                <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
-                <a href="#" class="btn-checkout btn-quote" style="background-color: #2980b9;">Odeslat individuální poptávku &rarr;</a>
-            </div>
-        {% else %}
-            <div class="cart-actions">
-                <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
-                <a href="#" class="btn-checkout">Pokračovat k objednávce &rarr;</a>
-            </div>
-        {% endif %}
+        <!-- Navigation -->
+        <div class="cart-actions">
+            <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
+            <a href="#" class="btn-checkout">Pokračovat k objednávce &rarr;</a>
+        </div>
 
     {% else %}
-        <!-- Empty cart message (now only shown when no items) -->
+        <!-- Empty cart message -->
         <div class="cart-empty-message">
             <p>Košík je prázdný.</p>
             <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>

@@ -54,39 +54,55 @@ class CartViewsTestCase(TestCase):
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(url, {'quantity': 2})
 
-        # Check redirect and inspect session cart contents
         self.assertEqual(response.status_code, 302)
         session_cart = self.client.session.get('cart', {})
         self.assertIn(str(self.product_limited.id), session_cart)
         self.assertEqual(session_cart[str(self.product_limited.id)], 2)
 
-    def test_add_to_cart_without_stock_limit(self) -> None:
-        """Verify ordering more units than physical stock is allowed (no capping)."""
+    def test_add_to_cart_overstock_without_confirmation(self) -> None:
+        """Adding more than stock without confirmation should fail and leave cart unchanged."""
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
+        response = self.client.post(url, {'quantity': 15})
 
-        # Stock is 5, requested quantity is 15
-        self.client.post(url, {'quantity': 15})
+        # Should redirect back to product detail, not cart
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('catalog:product_detail', args=[self.product_limited.slug]), response.url)
 
+        # Cart should remain empty
         session_cart = self.client.session.get('cart', {})
+        self.assertNotIn(str(self.product_limited.id), session_cart)
+
+    def test_add_to_cart_overstock_with_confirmation(self) -> None:
+        """Overstock with confirmed checkbox should succeed."""
+        url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
+        response = self.client.post(url, {
+            'quantity': 15,
+            'overstock_confirmed': True
+        })
+
+        self.assertEqual(response.status_code, 302)
+        session_cart = self.client.session.get('cart', {})
+        self.assertIn(str(self.product_limited.id), session_cart)
         self.assertEqual(session_cart[str(self.product_limited.id)], 15)
 
     def test_update_cart_quantity_override(self) -> None:
         """Verify cart update directly overrides existing quantity instead of adding to it."""
-        # Populate initial session cart
         session = self.client.session
         session['cart'] = {str(self.product_limited.id): 3}
         session.save()
 
-        # Submit request with override flag enabled (use 'on' which BooleanField accepts)
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
-        self.client.post(url, {'quantity': 7, 'override': 'on'})
+        self.client.post(url, {
+            'quantity': 7,
+            'override': 'on',
+            'overstock_confirmed': True,
+        })
 
         session_cart = self.client.session.get('cart', {})
         self.assertEqual(session_cart[str(self.product_limited.id)], 7)
 
     def test_remove_from_cart_successful(self) -> None:
         """Verify item can be completely removed from cart session."""
-        # Prepare multi-item cart in session
         session = self.client.session
         session['cart'] = {
             str(self.product_limited.id): 2,
@@ -94,7 +110,6 @@ class CartViewsTestCase(TestCase):
         }
         session.save()
 
-        # Remove target product and check remaining items
         url = reverse('catalog:cart_remove', args=[self.product_limited.id])
         response = self.client.post(url)
 
@@ -104,28 +119,42 @@ class CartViewsTestCase(TestCase):
         self.assertIn(str(self.product_secondary.id), session_cart)
 
     def test_invalid_quantity_input_fallback(self) -> None:
-        """
-        Verify invalid inputs (empty, zero, negative, non-numeric) fall back to 1.
-        """
+        """Invalid inputs (empty, zero, negative, non-numeric) fall back to 1."""
+        from django.test import Client
+
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         invalid_inputs = ['', '0', '-5', 'abc', '   ']
 
         for invalid in invalid_inputs:
-            # Reset cart before each sub-test
-            self.client.session['cart'] = {}
-            self.client.session.save()
-
-            self.client.post(url, {'quantity': invalid})
-            session_cart = self.client.session.get('cart', {})
+            client = Client()
+            client.post(url, {'quantity': invalid})
+            session_cart = client.session.get('cart', {})
             self.assertEqual(session_cart[str(self.product_limited.id)], 1)
+
+    def test_quantity_exceeds_max_fallback(self) -> None:
+        """Quantity > 50 is rejected – redirects to product detail, cart stays empty."""
+        url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
+        response = self.client.post(url, {'quantity': '55'})
+
+        # Cart must NOT contain the product
+        session_cart = self.client.session.get('cart', {})
+        self.assertNotIn(str(self.product_limited.id), session_cart)
+
+        # Should redirect back to product detail
+        self.assertRedirects(response, reverse('catalog:product_detail', args=[self.product_limited.slug]))
+
+    def test_add_to_cart_accumulates(self) -> None:
+        """Adding same product twice without override accumulates quantity."""
+        url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
+        self.client.post(url, {'quantity': 2})
+        self.client.post(url, {'quantity': 3})
+
+        session_cart = self.client.session.get('cart', {})
+        self.assertEqual(session_cart[str(self.product_limited.id)], 5)
 
     # ===================== CART CONTEXT TESTS =====================
     def test_cart_detail_context(self) -> None:
-        """
-        Verify that cart_detail view returns full context with items,
-        totals, and correct subtotals.
-        """
-        # Prepare session cart with two products
+        """Cart detail view returns full context with items, totals, and correct subtotals."""
         session = self.client.session
         session['cart'] = {
             str(self.product_limited.id): 2,
@@ -133,35 +162,24 @@ class CartViewsTestCase(TestCase):
         }
         session.save()
 
-        # Fetch cart detail page
         url = reverse('catalog:cart_detail')
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
         context = response.context
 
-        # Check items list
         self.assertIn('items', context)
         items = context['items']
         self.assertEqual(len(items), 2)
 
-        # Verify first item
         item1 = next(i for i in items if i['product'].id == self.product_limited.id)
         self.assertEqual(item1['quantity'], 2)
-        self.assertEqual(
-            item1['subtotal_gross'],
-            self.product_limited.price_gross * 2
-        )
+        self.assertEqual(item1['subtotal_gross'], self.product_limited.price_gross * 2)
 
-        # Verify second item
         item2 = next(i for i in items if i['product'].id == self.product_secondary.id)
         self.assertEqual(item2['quantity'], 3)
-        self.assertEqual(
-            item2['subtotal_gross'],
-            self.product_secondary.price_gross * 3
-        )
+        self.assertEqual(item2['subtotal_gross'], self.product_secondary.price_gross * 3)
 
-        # Check totals
         self.assertIn('total_quantity', context)
         self.assertEqual(context['total_quantity'], 5)
 
@@ -180,11 +198,7 @@ class CartViewsTestCase(TestCase):
         self.assertEqual(context['total_net'], expected_total_net)
 
     def test_cart_detail_empty(self) -> None:
-        """
-        Verify that cart_detail view handles empty cart gracefully
-        and returns zero totals with empty items list.
-        """
-        # Ensure session cart is empty
+        """Cart detail handles empty cart and returns zero totals with empty items list."""
         session = self.client.session
         session['cart'] = {}
         session.save()
@@ -194,43 +208,15 @@ class CartViewsTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         context = response.context
-
-        # Check items list is empty
-        self.assertIn('items', context)
         self.assertEqual(context['items'], [])
-
-        # Check all totals are zero
-        self.assertIn('total_quantity', context)
         self.assertEqual(context['total_quantity'], 0)
-
-        self.assertIn('total_net', context)
         self.assertEqual(context['total_net'], Decimal('0.00'))
-
-        self.assertIn('total_gross', context)
         self.assertEqual(context['total_gross'], Decimal('0.00'))
-
-    def test_add_to_cart_accumulates(self) -> None:
-        """Verify that adding same product again increases quantity (no override)."""
-        # Add first time
-        url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
-        self.client.post(url, {'quantity': 2})
-        # Add second time without override
-        self.client.post(url, {'quantity': 3})
-        session_cart = self.client.session.get('cart', {})
-        self.assertEqual(session_cart[str(self.product_limited.id)], 5)
-
-    def test_quantity_exceeds_max_fallback(self) -> None:
-        """Verify quantity > 50 falls back to 1 (form max_value validation)."""
-        url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
-        self.client.post(url, {'quantity': '55'})
-
-        session_cart = self.client.session.get('cart', {})
-        self.assertEqual(session_cart[str(self.product_limited.id)], 1)
 
     # ===================== AJAX CART TESTS =====================
     def test_add_to_cart_ajax(self) -> None:
-        """Test AJAX add to cart returns JSON with correct data."""
-        url = reverse('catalog:add_to_cart_ajax', args=[self.product_limited.id])
+        """AJAX add to cart returns JSON with correct data."""
+        url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(
             url,
             {'quantity': 2},
@@ -244,16 +230,15 @@ class CartViewsTestCase(TestCase):
         self.assertEqual(data['item_quantity'], 2)
 
     def test_update_cart_ajax(self) -> None:
-        """Test AJAX update quantity returns JSON with recalculated totals."""
-        # Prepare cart with one item
+        """AJAX update quantity (via add_to_cart with override) returns JSON with recalculated totals."""
         session = self.client.session
         session['cart'] = {str(self.product_limited.id): 3}
         session.save()
 
-        url = reverse('catalog:update_cart_ajax', args=[self.product_limited.id])
+        url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(
             url,
-            {'quantity': 5},
+            {'quantity': 5, 'override': 'on'},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest'
         )
 
@@ -263,13 +248,11 @@ class CartViewsTestCase(TestCase):
         self.assertEqual(data['item_quantity'], 5)
         self.assertEqual(data['cart_total_quantity'], 5)
 
-        # Formátováno na 2 desetinná místa
         expected_total_gross = f"{(self.product_limited.price_gross * 5):.2f}"
         self.assertEqual(data['total_gross'], expected_total_gross)
 
     def test_remove_from_cart_ajax(self) -> None:
-        """Test AJAX remove item returns JSON with updated totals."""
-        # Prepare cart with two items
+        """AJAX remove item returns JSON with updated totals."""
         session = self.client.session
         session['cart'] = {
             str(self.product_limited.id): 2,
@@ -277,7 +260,7 @@ class CartViewsTestCase(TestCase):
         }
         session.save()
 
-        url = reverse('catalog:remove_from_cart_ajax', args=[self.product_limited.id])
+        url = reverse('catalog:cart_remove', args=[self.product_limited.id])
         response = self.client.post(
             url,
             HTTP_X_REQUESTED_WITH='XMLHttpRequest'
@@ -288,17 +271,20 @@ class CartViewsTestCase(TestCase):
         self.assertTrue(data['success'])
         self.assertEqual(data['cart_total_quantity'], 3)  # only secondary remains
 
-        # Formátováno na 2 desetinná místa
         expected_total_gross = f"{(self.product_secondary.price_gross * 3):.2f}"
         self.assertEqual(data['total_gross'], expected_total_gross)
 
     def test_add_to_cart_ajax_out_of_stock(self) -> None:
-        """Test that out-of-stock product returns stock warning."""
+        """Out-of-stock product returns stock warning in JSON."""
         self.product_limited.stock = 0
         self.product_limited.save()
 
-        url = reverse('catalog:add_to_cart_ajax', args=[self.product_limited.id])
-        response = self.client.post(url, {'quantity': 1}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
+        response = self.client.post(
+            url,
+            {'quantity': 1, 'overstock_confirmed': True},  # must confirm even when zero
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
         data = response.json()
         self.assertIn('stock_warning', data)
         self.assertIsNotNone(data['stock_warning'])

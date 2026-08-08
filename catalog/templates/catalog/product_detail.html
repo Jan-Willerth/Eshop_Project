@@ -47,37 +47,6 @@
         </form>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const stock = {{ product.stock }};
-        const qtyInput = document.getElementById('quantity');
-        const warningBox = document.getElementById('overstock-warning');
-        const qtySpan = warningBox.querySelector('.qty-val');
-        const confirmCheckbox = warningBox.querySelector('.overstock-checkbox');
-        const submitBtn = document.getElementById('submit-btn');
-
-        function checkStockLimit() {
-            const currentQty = parseInt(qtyInput.value) || 1;
-
-            if (currentQty > stock) {
-                if (qtySpan) qtySpan.textContent = currentQty;
-                warningBox.style.display = 'block';
-                submitBtn.disabled = !confirmCheckbox.checked;
-            } else {
-                warningBox.style.display = 'none';
-                confirmCheckbox.checked = false;
-                submitBtn.disabled = false;
-            }
-        }
-
-        qtyInput.addEventListener('input', checkStockLimit);
-        qtyInput.addEventListener('change', checkStockLimit);
-        confirmCheckbox.addEventListener('change', checkStockLimit);
-
-        checkStockLimit();
-    });
-    </script>
-
     <!-- Description -->
     {% if product.description %}
         <section class="product-description">

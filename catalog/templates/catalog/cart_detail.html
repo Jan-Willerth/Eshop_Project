@@ -43,10 +43,9 @@
                             </div>
                         </td>
 
-                        <!-- ========== QUANTITY FORM ========== -->
+                        <!-- Quantity form (update via add_to_cart with override=on) -->
                         <td class="cart-item-quantity">
                             <form action="{% url 'catalog:add_to_cart' product_id=item.product.id %}"
-                                  data-ajax-url="{% url 'catalog:update_cart_ajax' product_id=item.product.id %}"
                                   method="post"
                                   class="quantity-form">
                                 {% csrf_token %}
@@ -69,10 +68,9 @@
                             {% endif %}
                         </td>
 
-                        <!-- ========== REMOVE FORM ========== -->
+                        <!-- Remove form -->
                         <td class="cart-item-actions">
                             <form action="{% url 'catalog:cart_remove' product_id=item.product.id %}"
-                                  data-ajax-url="{% url 'catalog:remove_from_cart_ajax' product_id=item.product.id %}"
                                   method="post"
                                   class="remove-form">
                                 {% csrf_token %}
@@ -97,8 +95,7 @@
             {% endif %}
         </div>
 
-        <!-- Navigation -->
-       <!-- Navigation / Bulk Quote Notice -->
+        <!-- Navigation / Bulk Quote Notice -->
         {% if has_bulk_items %}
             <div class="bulk-quote-warning" style="margin: 15px 0; padding: 15px; background-color: #e8f4f8; border: 1px solid #3498db; border-radius: 5px;">
                 <p><strong>Upozornění:</strong> Košík obsahuje položku s množstvím vyšším než 50 ks. Pro velké objednávky je vyžadována platba předem a individuální vyřízení.</p>
@@ -113,153 +110,13 @@
                 <a href="#" class="btn-checkout">Pokračovat k objednávce &rarr;</a>
             </div>
         {% endif %}
-        <!-- Empty cart message -->
+
+    {% else %}
+        <!-- Empty cart message (now only shown when no items) -->
         <div class="cart-empty-message">
             <p>Košík je prázdný.</p>
             <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
         </div>
     {% endif %}
 </div>
-<!-- JAVASCRIPT PRO AJAX -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function updateCartBadge(count) {
-        const badge = document.querySelector('.badge');
-        const cartLink = document.querySelector('.btn-cart');
-        if (badge) {
-            if (count > 0) {
-                badge.textContent = count;
-                badge.style.display = 'inline';
-            } else {
-                badge.style.display = 'none';
-            }
-        } else if (count > 0 && cartLink) {
-            const newBadge = document.createElement('span');
-            newBadge.className = 'badge';
-            newBadge.textContent = count;
-            cartLink.appendChild(newBadge);
-        }
-    }
-
-    function showStockWarning(message) {
-        const warningDiv = document.getElementById('stock-warning');
-        if (warningDiv) {
-            if (message) {
-                warningDiv.textContent = message;
-                warningDiv.style.display = 'block';
-            } else {
-                warningDiv.style.display = 'none';
-            }
-        }
-    }
-
-    // UPDATE QUANTITY
-    document.querySelectorAll('.quantity-form').forEach(form => {
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const url = this.dataset.ajaxUrl || this.action;
-        const csrfToken = this.querySelector('[name=csrfmiddlewaretoken]').value;
-        const formData = new FormData(this);
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': csrfToken,
-            },
-            body: formData,
-        })
-        .then(res => res.ok ? res.json() : Promise.reject(res))
-        .then(data => {
-            if (data.success) {
-                updateCartBadge(data.cart_total_quantity);
-
-                const totalGrossElement = document.querySelector('.total-gross strong');
-                if (totalGrossElement) totalGrossElement.textContent = data.total_gross + ' Kč';
-
-                const totalNetElement = document.querySelector('.total-net small');
-                if (totalNetElement && data.total_net) {
-                    totalNetElement.textContent = 'Celkem bez DPH: ' + data.total_net + ' Kč';
-                }
-
-                const row = this.closest('tr');
-                const subtotalCell = row.querySelector('.cart-item-price strong');
-                if (subtotalCell) subtotalCell.textContent = data.item_subtotal + ' Kč';
-
-                const qtyInput = row.querySelector('input[name="quantity"]');
-                if (qtyInput) qtyInput.value = data.item_quantity;
-
-                // --- NEW: Toggle overstock warning box dynamically ---
-                const warningWrapper = row.querySelector('.overstock-warning-wrapper');
-                if (warningWrapper) {
-                    const qtySpan = warningWrapper.querySelector('.qty-val');
-                    const checkbox = warningWrapper.querySelector('.overstock-checkbox');
-
-                    if (data.is_overstock) {
-                        if (qtySpan) qtySpan.textContent = data.quantity || data.item_quantity;
-                        warningWrapper.style.display = 'block';
-                    } else {
-                        warningWrapper.style.display = 'none';
-                        if (checkbox) checkbox.checked = false;
-                    }
-                }
-
-                showStockWarning(data.stock_warning);
-
-                const title = document.querySelector('.cart-title');
-                if (title) title.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
-            } else {
-                alert('Chyba: ' + (data.error || 'Nepodařilo se aktualizovat košík.'));
-            }
-        })
-        .catch(err => console.error('AJAX update error:', err));
-    });
-});
-
-    // REMOVE ITEM
-    document.querySelectorAll('.remove-form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const url = this.dataset.ajaxUrl || this.action;
-            const csrfToken = this.querySelector('[name=csrfmiddlewaretoken]').value;
-            const row = this.closest('tr');
-
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': csrfToken,
-                },
-            })
-            .then(res => res.ok ? res.json() : Promise.reject(res))
-            .then(data => {
-                if (data.success) {
-                    row.remove();
-                    updateCartBadge(data.cart_total_quantity);
-
-                    const totalGrossElement = document.querySelector('.total-gross strong');
-                    if (totalGrossElement) totalGrossElement.textContent = data.total_gross + ' Kč';
-
-                    const totalNetElement = document.querySelector('.total-net small');
-                    if (totalNetElement && data.total_net) {
-                        totalNetElement.textContent = 'Celkem bez DPH: ' + data.total_net + ' Kč';
-                    }
-
-                    const title = document.querySelector('.cart-title');
-                    if (title) title.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
-
-                    const tbody = document.querySelector('.cart-table tbody');
-                    if (tbody && tbody.children.length === 0) {
-                        location.reload();
-                    }
-                } else {
-                    alert('Chyba: ' + (data.error || 'Nepodařilo se odstranit položku.'));
-                }
-            })
-            .catch(err => console.error('AJAX remove error:', err));
-        });
-    });
-});
-</script>
-
 {% endblock %}

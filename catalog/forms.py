@@ -5,16 +5,18 @@ from django import forms
 class CartAddProductForm(forms.Form):
     """Form for validating product quantity, cart update mode, and overstock confirmation."""
 
-    quantity = forms.IntegerField(
-        min_value=1,
-        initial=1,
-        widget=forms.NumberInput(attrs={
+    quantity = forms.CharField(
+        max_length=10,
+        required=False,
+        initial='1',
+        widget=forms.TextInput(attrs={
             'class': 'form-control text-center',
             'min': '1',
+            'max': '50',
+            'inputmode': 'numeric',
         }),
         error_messages={
-            'invalid': 'Zadejte platné číslo.',
-            'min_value': 'Množství musí být alespoň 1 ks.',
+            'required': 'Zadejte množství.',
         }
     )
 
@@ -35,21 +37,36 @@ class CartAddProductForm(forms.Form):
         self.product_stock = product_stock
 
     def clean_quantity(self) -> int:
-        """Fallback to default 1 if invalid or empty quantity is supplied."""
-        quantity = self.cleaned_data.get('quantity')
-        if not quantity or quantity < 1:
+        """
+        Parse quantity from string input, defaulting to 1 for any invalid value.
+        Valid range: 1–50.
+        """
+        raw = self.cleaned_data.get('quantity', '').strip()
+        try:
+            qty = int(raw)
+        except (ValueError, TypeError):
+            return 1  # fallback for empty or non-numeric input
+
+        if qty < 1:
             return 1
-        return quantity
+        if qty > 50:
+            raise forms.ValidationError(
+                'Maximální množství na jednu položku je 50 ks. '
+                'Pro větší objednávky nás prosím kontaktujte.',
+                code='max_value'
+            )
+        return qty
 
     def clean(self):
+        """Ensure overstock confirmation checkbox is checked when quantity exceeds stock."""
         cleaned_data = super().clean()
         quantity = cleaned_data.get('quantity') or 0
         confirmed = cleaned_data.get('overstock_confirmed')
 
-        # Pokud uživatel objednává více než je skladem, musí zaškrtnout souhlas
         if quantity > self.product_stock and not confirmed:
             self.add_error(
                 'overstock_confirmed',
-                f'Poptáváte více kusů, než máme skladem ({self.product_stock} ks). Potvrďte prosím souhlas s delší dodací lhůtou.'
+                f'Poptáváte více kusů, než máme skladem ({self.product_stock} ks). '
+                f'Potvrďte prosím souhlas s delší dodací lhůtou.'
             )
         return cleaned_data

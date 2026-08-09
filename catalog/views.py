@@ -150,7 +150,12 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
             }
         elif 'overstock_confirmed' in form.errors:
             error_msg = form.errors['overstock_confirmed'][0]
-            response_data = {'success': False, 'error': error_msg}
+            response_data = {
+                'success': False,
+                'error': error_msg,
+                'error_field': 'overstock_confirmed',
+                'stock': product.stock,
+            }
 
         return JsonResponse(response_data, status=400)
 

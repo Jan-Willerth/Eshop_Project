@@ -150,17 +150,83 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ==============================
+        // ==============================
     // 6. Cart detail page: quantity update (AJAX)
     // ==============================
+    document.querySelectorAll('.cart-item .quantity-form').forEach(form => {
+        const row = form.closest('tr');
+        const qtyInput = form.querySelector('input[name="quantity"]');
+        const warningWrapper = row.querySelector('.overstock-warning-wrapper');
+        const checkbox = warningWrapper ? warningWrapper.querySelector('.overstock-checkbox') : null;
+        const stockValElem = warningWrapper ? warningWrapper.querySelector('.stock-val') : null;
+        const qtySpan = warningWrapper ? warningWrapper.querySelector('.qty-val') : null;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const stockLimit = stockValElem ? parseInt(stockValElem.textContent, 10) : NaN;
+
+        if (!qtyInput || !warningWrapper || !submitBtn) return;
+
+        function updateWarningState() {
+            const currentQty = parseInt(qtyInput.value, 10) || 0;
+            const isOverstock = !isNaN(stockLimit) && currentQty > stockLimit;
+
+            if (isOverstock) {
+                if (qtySpan) qtySpan.textContent = currentQty.toString();
+                warningWrapper.style.display = 'block';
+                submitBtn.disabled = !(checkbox && checkbox.checked);
+            } else {
+                warningWrapper.style.display = 'none';
+                if (checkbox) checkbox.checked = false;
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Run on load
+        updateWarningState();
+
+        // Listen to quantity changes
+        qtyInput.addEventListener('input', updateWarningState);
+        qtyInput.addEventListener('change', updateWarningState);
+
+        const hiddenConfirmed = form.querySelector('input[name="overstock_confirmed"]');
+
+        // Synchronizovat hodnotu hidden inputu podle checkboxu
+        function syncHiddenInput() {
+            if (hiddenConfirmed) {
+                hiddenConfirmed.value = (checkbox && checkbox.checked) ? 'true' : '';
+            }
+        }
+
+        // Při změně checkboxu
+        if (checkbox) {
+            checkbox.addEventListener('change', function () {
+                submitBtn.disabled = !this.checked;
+                syncHiddenInput();                     // <-- přidej
+            });
+        }
+
+
+        if (checkbox) {
+            syncHiddenInput();
+        }
+
+
+        if (checkbox) {
+            checkbox.addEventListener('change', function () {
+                submitBtn.disabled = !this.checked;
+            });
+        }
+    });
     document.querySelectorAll('.quantity-form').forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
 
-            const formData = new FormData(this);
             const url = this.action;
             const csrfToken = this.querySelector('[name=csrfmiddlewaretoken]').value;
             const row = this.closest('tr');
+            const qtyInput = this.querySelector('input[name="quantity"]');
+            const oldQty = qtyInput.value;
+
+            const formData = new FormData(this);
 
             fetch(url, {
                 method: 'POST',
@@ -170,8 +236,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: formData,
             })
-            .then(res => res.ok ? res.json() : Promise.reject(res))
-            .then(data => {
+            .then(res => res.json().then(data => ({ status: res.status, data })))
+            .then(({ status, data }) => {
+                console.log('Status:', status, 'Data:', data);
                 if (data.success) {
                     updateCartBadge(data.cart_total_quantity);
 
@@ -186,15 +253,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     const subtotalCell = row.querySelector('.cart-item-price strong');
                     if (subtotalCell) subtotalCell.textContent = data.item_subtotal + ' Kč';
 
-                    const qtyInputEl = row.querySelector('input[name="quantity"]');
-                    if (qtyInputEl) qtyInputEl.value = data.item_quantity;
+                    if (qtyInput) qtyInput.value = data.item_quantity;
 
                     const warningWrapper = row.querySelector('.overstock-warning-wrapper');
                     if (warningWrapper) {
                         const qtySpanEl = warningWrapper.querySelector('.qty-val');
                         const checkbox = warningWrapper.querySelector('.overstock-checkbox');
                         if (data.is_overstock) {
-                            if (qtySpanEl) qtySpanEl.textContent = data.quantity || data.item_quantity;
+                            if (qtySpanEl) qtySpanEl.textContent = data.item_quantity;
                             warningWrapper.style.display = 'block';
                         } else {
                             warningWrapper.style.display = 'none';
@@ -204,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const titleEl = document.querySelector('.cart-title');
                     if (titleEl) titleEl.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
-                 } else {
+                } else {
                     // Chyba – pokud je quote_url, zobrazit modál
                     if (data.quote_url) {
                         if (modalProductName) {
@@ -218,9 +284,28 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (cartModal) {
                             cartModal.style.display = 'flex';
                         }
-                        // Vrátit input na původní hodnotu (aby nezůstalo >99)
-                        const originalQty = this.querySelector('input[name="quantity"]').defaultValue;
-                        this.querySelector('input[name="quantity"]').value = originalQty;
+                        if (qtyInput) qtyInput.value = oldQty;
+                    } else if (data.error_field === 'overstock_confirmed') {
+                        // Overstock bez potvrzení – zobrazit varování v řádku
+                        const warningWrapper = row.querySelector('.overstock-warning-wrapper');
+                        if (warningWrapper) {
+                            const qtySpan = warningWrapper.querySelector('.qty-val');
+                            const stockSpan = warningWrapper.querySelector('.stock-val');
+                            const checkbox = warningWrapper.querySelector('.overstock-checkbox');
+                            const submitBtn = row.querySelector('button[type="submit"]');
+
+                            if (qtySpan) qtySpan.textContent = qtyInput.value;
+                            if (stockSpan) stockSpan.textContent = data.stock;
+                            warningWrapper.style.display = 'block';
+                            if (checkbox) checkbox.checked = false;
+                            if (submitBtn) submitBtn.disabled = true;
+
+                            if (checkbox) {
+                                checkbox.addEventListener('change', function() {
+                                    if (submitBtn) submitBtn.disabled = !this.checked;
+                                });
+                            }
+                        }
                     } else {
                         alert('Chyba: ' + (data.error || 'Nepodařilo se aktualizovat košík.'));
                     }

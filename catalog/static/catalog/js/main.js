@@ -2,25 +2,21 @@
  * Main frontend logic for the e-shop.
  *
  * Handles:
- *   - AJAX add-to-cart with modal feedback (overstock warnings)
+ *   - AJAX add-to-cart with modal feedback and overstock warnings
  *   - Navbar cart badge updates
  *   - Overstock warning on product detail page
  *   - AJAX quantity update and item removal on cart detail page
  */
 
 document.addEventListener('DOMContentLoaded', function () {
-    // ==============================
-    // 1. DOM element references
-    // ==============================
+    // ===================== DOM REFERENCES =====================
     const cartModal = document.getElementById('cart-modal');
     const modalProductName = document.getElementById('modal-product-name');
     const btnContinueShopping = document.getElementById('btn-continue-shopping');
     const cartBadge = document.querySelector('.badge');
     const cartLink = document.querySelector('.btn-cart');
 
-    // ==============================
-    // 2. Helper: update cart badge
-    // ==============================
+    // ===================== CART BADGE =====================
     function updateCartBadge(count) {
         if (cartBadge) {
             if (count > 0) {
@@ -37,9 +33,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ==============================
-    // 3. Overstock warning on product detail page
-    // ==============================
+    // ===================== PRODUCT DETAIL OVERSTOCK =====================
     const qtyInput = document.getElementById('id_quantity');
     const overstockWarningBox = document.getElementById('overstock-warning');
 
@@ -54,10 +48,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const currentQty = parseInt(qtyInput.value, 10) || 1;
 
             if (currentQty > 99) {
-                    overstockWarningBox.style.display = 'none';
-                    submitBtn.disabled = false;
-                    return;
-                }
+                overstockWarningBox.style.display = 'none';
+                submitBtn.disabled = false;
+                return;
+            }
             if (!isNaN(stockLimit) && currentQty > stockLimit) {
                 if (qtySpan) qtySpan.textContent = currentQty.toString();
                 overstockWarningBox.style.display = 'block';
@@ -79,18 +73,14 @@ document.addEventListener('DOMContentLoaded', function () {
         checkStockLimit();
     }
 
-    // ==============================
-    // 4. Modal close button
-    // ==============================
+    // ===================== MODAL CLOSE =====================
     if (btnContinueShopping && cartModal) {
         btnContinueShopping.addEventListener('click', function () {
             cartModal.style.display = 'none';
         });
     }
 
-        // ==============================
-    // 5. AJAX Add to Cart (global listener)
-    // ==============================
+    // ===================== AJAX ADD TO CART =====================
     document.addEventListener('submit', function (e) {
         const form = e.target;
 
@@ -109,14 +99,12 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(async response => {
                 if (!response.ok) {
-                    // Pokus o parsování JSON i z chybové odpovědi
                     const errorData = await response.json().catch(() => null);
                     throw { status: response.status, data: errorData };
                 }
                 return response.json();
             })
             .then(data => {
-                // Úspěch
                 if (modalProductName) {
                     modalProductName.textContent = data.message || `"${data.product_name}" byl přidán do košíku.`;
                 }
@@ -131,7 +119,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error('AJAX Add to Cart error:', error);
 
                 if (error && error.data && error.data.quote_url) {
-                    // Over limit – upravit modál
                     if (modalProductName) {
                         modalProductName.innerHTML = error.data.over_limit_message || error.data.error;
                     }
@@ -150,9 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-        // ==============================
-    // 6. Cart detail page: quantity update (AJAX)
-    // ==============================
+    // ===================== CART DETAIL: QUANTITY UPDATE =====================
     document.querySelectorAll('.cart-item .quantity-form').forEach(form => {
         const row = form.closest('tr');
         const qtyInput = form.querySelector('input[name="quantity"]');
@@ -165,7 +150,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!qtyInput || !warningWrapper || !submitBtn) return;
 
-        // Zjistíme, jestli bylo toto množství už dřív potvrzené serverem
         let confirmed = warningWrapper.dataset.confirmed === 'true';
 
         function updateWarningState() {
@@ -173,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const isOverstock = !isNaN(stockLimit) && currentQty > stockLimit;
 
             if (isOverstock && confirmed) {
-                // Množství je nad skladem, ale uživatel to už potvrdil -> chováme se jako u běžné položky
                 warningWrapper.style.display = 'none';
                 submitBtn.disabled = false;
             } else if (isOverstock) {
@@ -187,10 +170,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Run on load
         updateWarningState();
 
-        // Jakmile uživatel množství změní, potvrzení už neplatí - vyžádáme si ho znovu
         qtyInput.addEventListener('input', function () {
             confirmed = false;
             updateWarningState();
@@ -202,33 +183,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const hiddenConfirmed = form.querySelector('input[name="overstock_confirmed"]');
 
-        // Synchronizovat hodnotu hidden inputu podle checkboxu
         function syncHiddenInput() {
             if (hiddenConfirmed) {
                 hiddenConfirmed.value = (checkbox && checkbox.checked) ? 'true' : '';
             }
         }
 
-        // Při změně checkboxu
         if (checkbox) {
             checkbox.addEventListener('change', function () {
                 submitBtn.disabled = !this.checked;
-                syncHiddenInput();                     // <-- přidej
+                syncHiddenInput();
             });
         }
 
-
-        if (checkbox) {
-            syncHiddenInput();
-        }
-
-
-        if (checkbox) {
-            checkbox.addEventListener('change', function () {
-                submitBtn.disabled = !this.checked;
-            });
-        }
+        syncHiddenInput();
     });
+
+    // ===================== CART DETAIL: SUBMIT QUANTITY =====================
     document.querySelectorAll('.quantity-form').forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -251,7 +222,6 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(res => res.json().then(data => ({ status: res.status, data })))
             .then(({ status, data }) => {
-                console.log('Status:', status, 'Data:', data);
                 if (data.success) {
                     updateCartBadge(data.cart_total_quantity);
 
@@ -274,7 +244,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         const checkbox = warningWrapper.querySelector('.overstock-checkbox');
                         const rowSubmitBtn = row.querySelector('.quantity-form button[type="submit"]');
 
-                        // Uložíme si aktuální stav potvrzení pro příště
                         warningWrapper.dataset.confirmed = data.overstock_confirmed ? 'true' : 'false';
 
                         if (data.is_overstock && !data.overstock_confirmed) {
@@ -282,7 +251,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             warningWrapper.style.display = 'block';
                             if (rowSubmitBtn) rowSubmitBtn.disabled = !(checkbox && checkbox.checked);
                         } else {
-                            // Buď v rámci skladu, nebo overstock už potvrzený -> schovat a odemknout
                             warningWrapper.style.display = 'none';
                             if (checkbox) checkbox.checked = false;
                             if (rowSubmitBtn) rowSubmitBtn.disabled = false;
@@ -292,7 +260,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     const titleEl = document.querySelector('.cart-title');
                     if (titleEl) titleEl.textContent = 'Košík (' + data.cart_total_quantity + ' ks)';
                 } else {
-                    // Chyba – pokud je quote_url, zobrazit modál
                     if (data.quote_url) {
                         if (modalProductName) {
                             modalProductName.innerHTML = data.over_limit_message || data.error;
@@ -307,7 +274,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         if (qtyInput) qtyInput.value = oldQty;
                     } else if (data.error_field === 'overstock_confirmed') {
-                        // Overstock bez potvrzení – zobrazit varování v řádku
                         const warningWrapper = row.querySelector('.overstock-warning-wrapper');
                         if (warningWrapper) {
                             const qtySpan = warningWrapper.querySelector('.qty-val');
@@ -339,9 +305,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ==============================
-    // 7. Cart detail page: remove item (AJAX)
-    // ==============================
+    // ===================== CART DETAIL: REMOVE ITEM =====================
     document.querySelectorAll('.remove-form').forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();

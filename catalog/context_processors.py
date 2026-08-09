@@ -4,8 +4,8 @@ from django.http import HttpRequest
 
 # ===================== CART CONTEXT PROCESSORS =====================
 def cart(request: HttpRequest) -> Dict[str, Any]:
-    """Expose total cart item count to all templates globally."""
-    cart_data: Dict[str, Any] = request.session.get('cart', {})
+    """Provide total cart item count to all templates."""
+    cart_data = request.session.get('cart', {})
 
     total_quantity = 0
     for key, entry in cart_data.items():
@@ -18,6 +18,4 @@ def cart(request: HttpRequest) -> Dict[str, Any]:
         if isinstance(qty, int):
             total_quantity += qty
 
-    return {
-        'cart_total_quantity': total_quantity
-    }
+    return {'cart_total_quantity': total_quantity}

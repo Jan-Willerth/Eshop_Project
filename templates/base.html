@@ -9,23 +9,24 @@
 </head>
 <body>
 
-    <!-- Header & Navigation -->
+    {# ---------- HEADER & NAVIGATION ---------- #}
     <header class="main-header">
         {% include 'navbar.html' %}
     </header>
 
-    <!-- Main Content Area -->
+    {# ---------- MAIN CONTENT ---------- #}
     <main class="main-content">
-        {% block content %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </main>
 
-   <!-- Footer -->
+    {# ---------- FOOTER ---------- #}
     <footer class="main-footer">
         {% include 'footer.html' %}
     </footer>
 
+    {# ---------- MODALS & SCRIPTS ---------- #}
     {% include 'catalog/includes/cart_modal.html' %}
     <script src="{% static 'catalog/js/main.js' %}"></script>
+
 </body>
 </html>

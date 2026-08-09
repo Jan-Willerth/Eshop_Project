@@ -4,7 +4,7 @@
 
 {% block content %}
 <article class="product-detail">
-    <!-- Breadcrumb navigation -->
+    {# ---------- BREADCRUMB ---------- #}
     <nav aria-label="Drobková navigace" class="product-category">
         <strong>Kategorie:</strong>
         {% if product.category.parent %}
@@ -16,27 +16,39 @@
 
     <h1 class="product-title">{{ product.name }}</h1>
 
-    <!-- Pricing & Stock -->
+    {# ---------- PRICING & STOCK ---------- #}
     <div class="product-pricing">
-        <div class="price-gross"><strong>Cena s DPH:</strong> {{ product.price_gross|floatformat:"-2" }} Kč</div>
-        <div class="price-net"><strong>Cena bez DPH:</strong> {{ product.price_net|floatformat:"-2" }} Kč</div>
+        <div class="price-gross">
+            <strong>Cena s DPH:</strong> {{ product.price_gross|floatformat:"-2" }} Kč
+        </div>
+        <div class="price-net">
+            <strong>Cena bez DPH:</strong> {{ product.price_net|floatformat:"-2" }} Kč
+        </div>
     </div>
 
     <div class="product-stock">
         <strong>Skladem:</strong> {{ product.stock }} ks
     </div>
 
-    <!-- Cart Action (POST form) -->
+    {# ---------- ADD TO CART FORM ---------- #}
     <div class="product-buy-box">
-        <form action="{% url 'catalog:add_to_cart' product.id %}" method="post" class="add-to-cart-form">
+        <form action="{% url 'catalog:add_to_cart' product.id %}"
+              method="post"
+              class="add-to-cart-form">
             {% csrf_token %}
 
             <div class="form-group" style="margin-bottom: 15px;">
                 <label for="id_quantity">Počet ks:</label>
-                <input type="number" id="id_quantity" name="quantity" value="1" min="1" class="input-quantity" style="width: 80px; padding: 5px;">
+                <input type="number"
+                       id="id_quantity"
+                       name="quantity"
+                       value="1"
+                       min="1"
+                       class="input-quantity"
+                       style="width: 80px; padding: 5px;">
             </div>
 
-            <!-- Overstock warning block -->
+            {# ---------- OVERSTOCK WARNING ---------- #}
             <div id="overstock-warning" style="display: none;">
                 {% include "catalog/includes/overstock_warning.html" with quantity=1 stock=product.stock %}
             </div>
@@ -47,7 +59,7 @@
         </form>
     </div>
 
-    <!-- Description -->
+    {# ---------- PRODUCT DESCRIPTION ---------- #}
     {% if product.description %}
         <section class="product-description">
             <h2>Popis produktu</h2>
@@ -55,7 +67,7 @@
         </section>
     {% endif %}
 
-    <!-- Technical parameters (using definition list for semantic markup) -->
+    {# ---------- TECHNICAL PARAMETERS ---------- #}
     {% if product.product_weight or product.product_height or product.product_width or product.product_length %}
         <section class="product-parameters">
             <h2>Parametry produktu</h2>
@@ -80,9 +92,11 @@
         </section>
     {% endif %}
 
-    <!-- Back button -->
+    {# ---------- BACK BUTTON ---------- #}
     <footer class="product-actions">
-        <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
+        <a href="{% url 'catalog:product_list' %}" class="btn-back">
+            &larr; Zpět na katalog
+        </a>
     </footer>
 </article>
 {% endblock %}

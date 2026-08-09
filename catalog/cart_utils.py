@@ -1,25 +1,14 @@
 from decimal import Decimal
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Union, Any
 
 from .models import Product
 
 
 # ===================== CART UTILITIES =====================
-def calculate_cart_totals(cart: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], int, Decimal, Decimal]:
-    """
-    Compute detailed cart information from session cart dictionary.
+def calculate_cart_totals(cart: Dict[str, Union[int, Dict[str, Any]]]) -> Tuple[List[Dict[str, Any]], int, Decimal, Decimal]:
+    """Calculate cart totals from session data.
 
-    Args:
-        cart: Mapping of product ID strings to either:
-              - a dict {'quantity': int, 'overstock_confirmed': bool} (new format), or
-              - a plain int (legacy format, treated as overstock_confirmed=False).
-
-    Returns:
-        A tuple containing:
-            - list of item dicts (product, quantity, subtotal_net, subtotal_gross, overstock_confirmed)
-            - total quantity across all items
-            - total net price
-            - total gross price
+    Supports legacy plain-int quantities and newer dict entries.
     """
     product_ids = [int(pid) for pid in cart.keys() if pid.isdigit()]
     products = Product.objects.filter(id__in=product_ids, is_active=True)
@@ -38,7 +27,6 @@ def calculate_cart_totals(cart: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], i
         if product is None:
             continue
 
-        # Support both the new dict format and the legacy plain-int format
         if isinstance(entry, dict):
             quantity = entry.get('quantity', 1)
             overstock_confirmed = bool(entry.get('overstock_confirmed', False))

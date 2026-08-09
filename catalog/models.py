@@ -1,12 +1,11 @@
 from decimal import Decimal
 
 from django.db import models
-from django.utils.text import slugify
 
 
 # ===================== VAT RATE =====================
 class VatRate(models.Model):
-    """Represents a value-added tax (VAT) percentage rate applied to products and services."""
+    """VAT percentage rate applied to products and services."""
 
     rate = models.DecimalField(max_digits=5, decimal_places=2)
     label = models.CharField(max_length=50)
@@ -21,7 +20,7 @@ class VatRate(models.Model):
 
 # ===================== ORDER STATUS =====================
 class OrderStatus(models.Model):
-    """Represents the operational state of an order (e.g., pending, paid, shipped)."""
+    """Operational state of an order (pending, paid, shipped, etc.)."""
 
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
@@ -35,7 +34,7 @@ class OrderStatus(models.Model):
 
 # ===================== USER =====================
 class User(models.Model):
-    """Represents a registered user account in the store database."""
+    """Registered user account."""
 
     username = models.CharField(max_length=100, unique=True)
     email = models.EmailField(unique=True)
@@ -50,7 +49,7 @@ class User(models.Model):
 
 # ===================== CATEGORY =====================
 class Category(models.Model):
-    """Hierarchical product category with self-referential parent support."""
+    """Hierarchical product category with optional parent."""
 
     name = models.CharField(max_length=150)
     slug = models.SlugField(max_length=150, unique=True, blank=True)
@@ -60,8 +59,7 @@ class Category(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='subcategories',
-        db_column='parent_id'
+        related_name='subcategories'
     )
 
     class Meta:
@@ -76,7 +74,7 @@ class Category(models.Model):
 
 # ===================== SHIPPING METHOD =====================
 class ShippingMethod(models.Model):
-    """Available logistics and delivery option for customer checkout."""
+    """Available delivery option."""
 
     name = models.CharField(max_length=100)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
@@ -92,7 +90,7 @@ class ShippingMethod(models.Model):
 
 # ===================== PAYMENT METHOD =====================
 class PaymentMethod(models.Model):
-    """Available payment options supported during customer checkout."""
+    """Available payment option."""
 
     name = models.CharField(max_length=100)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
@@ -108,14 +106,13 @@ class PaymentMethod(models.Model):
 
 # ===================== PRODUCT =====================
 class Product(models.Model):
-    """Catalog product item with dimensions, pricing, stock tracking, and VAT details."""
+    """Catalog product with dimensions, pricing, and stock tracking."""
 
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     description = models.TextField(blank=True, null=True)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
 
-    # Package dimensions for shipping calculation
     package_weight = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Package weight (g)"
     )
@@ -129,7 +126,6 @@ class Product(models.Model):
         max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Package length (mm)"
     )
 
-    # Physical product dimensions
     product_weight = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Product weight (g)"
     )
@@ -143,7 +139,6 @@ class Product(models.Model):
         max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Product length (mm)"
     )
 
-    # Inventory status, categorization, and media
     stock = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
@@ -152,7 +147,7 @@ class Product(models.Model):
 
     @property
     def price_gross(self) -> Decimal:
-        """Calculate and return the gross price including VAT."""
+        """Return gross price including VAT."""
         if self.vat_rate and self.vat_rate.rate:
             return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
         return self.price_net
@@ -166,9 +161,8 @@ class Product(models.Model):
 
 # ===================== ORDER =====================
 class Order(models.Model):
-    """Customer order containing price snapshots, delivery details, and billing data."""
+    """Customer order with frozen price snapshots, delivery, and billing details."""
 
-    # Nullable user foreign key to support guest checkout
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
     status = models.ForeignKey(OrderStatus, on_delete=models.PROTECT, related_name='orders')
     shipping_method = models.ForeignKey(ShippingMethod, on_delete=models.PROTECT)
@@ -185,7 +179,6 @@ class Order(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # Customer identity and primary shipping destination
     customer_email = models.EmailField()
     customer_phone = models.CharField(max_length=50)
     shipping_first_name = models.CharField(max_length=100)
@@ -194,7 +187,6 @@ class Order(models.Model):
     shipping_city = models.CharField(max_length=100)
     shipping_zip_code = models.CharField(max_length=20)
 
-    # Optional business or alternative billing details
     billing_first_name = models.CharField(max_length=100, blank=True, null=True)
     billing_last_name = models.CharField(max_length=100, blank=True, null=True)
     billing_company_name = models.CharField(max_length=150, blank=True, null=True)
@@ -231,7 +223,7 @@ class OrderItem(models.Model):
 
 # ===================== QUOTE REQUEST =====================
 class QuoteRequest(models.Model):
-    """Stores individual quote requests for bulk orders exceeding standard quantity limits."""
+    """Individual quote request for bulk or custom orders."""
 
     first_name = models.CharField(max_length=100, default='', verbose_name="Jméno")
     last_name = models.CharField(max_length=100, default='', verbose_name="Příjmení")
@@ -251,8 +243,8 @@ class QuoteRequest(models.Model):
         verbose_name = "Poptávka na míru"
         verbose_name_plural = "Poptávky na míru"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Poptávka #{self.id} – {self.first_name} {self.last_name} ({self.quantity} ks)"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<QuoteRequest(id={self.id}, email='{self.email}', processed={self.processed})>"

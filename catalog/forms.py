@@ -4,7 +4,7 @@ from .models import QuoteRequest
 
 # ===================== CART FORMS =====================
 class CartAddProductForm(forms.Form):
-    """Form for validating product quantity, cart update mode, and overstock confirmation."""
+    """Validate product quantity and enforce overstock confirmation when needed."""
 
     quantity = forms.CharField(
         max_length=3,
@@ -37,7 +37,7 @@ class CartAddProductForm(forms.Form):
         self.product_stock = product_stock
 
     def clean_quantity(self) -> int:
-        """Parse quantity from string input, defaulting to 1 for any invalid value. Max 99."""
+        """Parse quantity from string input, defaulting to 1 for any invalid value."""
         raw = self.cleaned_data.get('quantity', '').strip()
         try:
             qty = int(raw)
@@ -54,7 +54,7 @@ class CartAddProductForm(forms.Form):
         return qty
 
     def clean(self):
-        """Ensure overstock confirmation checkbox is checked when quantity exceeds stock."""
+        """Require overstock confirmation when quantity exceeds available stock."""
         cleaned_data = super().clean()
         quantity = cleaned_data.get('quantity') or 0
         confirmed = cleaned_data.get('overstock_confirmed')

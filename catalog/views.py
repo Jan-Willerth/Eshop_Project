@@ -13,7 +13,7 @@ from .cart_utils import calculate_cart_totals
 
 # ===================== CATALOG VIEWS =====================
 def product_list(request: HttpRequest) -> HttpResponse:
-    """Render active product catalog list with optimized category prefetching."""
+    """Render the active product catalog with optimized category prefetching."""
     products = Product.objects.filter(is_active=True).select_related('vat_rate', 'category__parent')
     categories = Category.objects.filter(is_active=True).select_related('parent')
 
@@ -24,7 +24,7 @@ def product_list(request: HttpRequest) -> HttpResponse:
 
 
 def product_detail(request: HttpRequest, slug: str) -> HttpResponse:
-    """Render active product detail view by unique slug."""
+    """Render the product detail page for an active product."""
     product = get_object_or_404(
         Product.objects.select_related('vat_rate', 'category__parent'),
         slug=slug,
@@ -37,12 +37,7 @@ def product_detail(request: HttpRequest, slug: str) -> HttpResponse:
 
 # ===================== QUOTE VIEWS =====================
 def custom_quote(request: HttpRequest) -> HttpResponse:
-    """
-    Display and process the individual quote request form for bulk orders.
-
-    GET – pre-fill product and quantity from query string.
-    POST – validate and save quote request, redirect to product list.
-    """
+    """Display and process the custom quote request form for bulk orders."""
     initial = {}
     if request.method == 'GET':
         product_id = request.GET.get('product')
@@ -67,11 +62,7 @@ def custom_quote(request: HttpRequest) -> HttpResponse:
 # ===================== CART VIEWS =====================
 @require_POST
 def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
-    """
-    Add a product to the cart session or update its quantity.
-
-    Handles both normal POST (redirect) and AJAX (JSON) requests.
-    """
+    """Add a product to the cart or update its quantity (AJAX/redirect)."""
     product = get_object_or_404(Product, id=product_id, is_active=True)
 
     post_data = request.POST.copy()
@@ -170,15 +161,6 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
 
         return JsonResponse(response_data, status=400)
 
-    error_msg = "Opravte prosím chyby ve formuláři."
-    if 'quantity' in form.errors:
-        error_msg = form.errors['quantity'][0]
-        error_msg += f' <a href="{quote_url}">Přejít na poptávkový formulář</a>'
-    elif 'overstock_confirmed' in form.errors:
-        error_msg = form.errors['overstock_confirmed'][0]
-    messages.error(request, mark_safe(error_msg))
-
-    # Determine where to redirect based on source of request
     if request.POST.get('from_cart'):
         redirect_url = reverse('catalog:cart_detail')
     else:
@@ -197,11 +179,7 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
 
 @require_POST
 def cart_remove(request: HttpRequest, product_id: int) -> HttpResponse:
-    """
-    Remove a specific product completely from the session cart.
-
-    Works for both normal POST (redirect) and AJAX (JSON) requests.
-    """
+    """Remove a product completely from the session cart (AJAX/redirect)."""
     product = get_object_or_404(Product, id=product_id)
     cart = request.session.get('cart', {})
     product_key = str(product.id)
@@ -225,9 +203,7 @@ def cart_remove(request: HttpRequest, product_id: int) -> HttpResponse:
 
 
 def cart_detail(request: HttpRequest) -> HttpResponse:
-    """
-    Render the shopping cart detail view with full item details and totals.
-    """
+    """Render the shopping cart detail view with totals."""
     cart = request.session.get('cart', {})
     items, total_quantity, total_net, total_gross = calculate_cart_totals(cart)
 

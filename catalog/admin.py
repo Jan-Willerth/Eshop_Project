@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.utils.html import format_html
 
 from .models import (
     Category, Product, VatRate, ShippingMethod, PaymentMethod,
@@ -10,7 +9,7 @@ from .models import (
 # ===================== VAT RATES =====================
 @admin.register(VatRate)
 class VatRateAdmin(admin.ModelAdmin):
-    """Admin configuration for value-added tax (VAT) rates."""
+    """Admin configuration for VAT rates."""
     list_display = ('rate', 'label', 'is_active')
     list_filter = ('is_active',)
     search_fields = ('label',)
@@ -28,16 +27,17 @@ class CategoryAdmin(admin.ModelAdmin):
 
 # ===================== ORDER ITEMS (INLINE) =====================
 class OrderItemInline(admin.TabularInline):
-    """Inline view to display order items within the Order detail page."""
+    """Inline for displaying order items in the Order detail page."""
     model = OrderItem
-    extra = 0  # Prevents rendering empty extra forms by default
+    extra = 0
     readonly_fields = ('product', 'quantity', 'unit_price_net', 'unit_price_gross', 'vat_rate')
-    can_delete = False  # Order items should remain historical audit trail
+    can_delete = False  # Preserve order items for historical audit trail
 
 
 # ===================== ORDERS =====================
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
+    """Admin configuration for orders with inline items and comprehensive fieldsets."""
     list_display = ('id', 'customer_email', 'total_price_gross', 'status', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('customer_email', 'id')
@@ -64,25 +64,30 @@ class OrderAdmin(admin.ModelAdmin):
     )
 
 
-# ===================== SHIPPING METHODS =====================
-@admin.register(ShippingMethod)
-class ShippingMethodAdmin(admin.ModelAdmin):
+# ===================== BASE METHOD CONFIGURATION =====================
+class BaseMethodAdmin(admin.ModelAdmin):
+    """Shared admin configuration for shipping and payment methods."""
     list_display = ('name', 'price_net', 'vat_rate', 'is_active')
     list_filter = ('is_active', 'vat_rate')
     search_fields = ('name',)
+
+
+# ===================== SHIPPING METHODS =====================
+@admin.register(ShippingMethod)
+class ShippingMethodAdmin(BaseMethodAdmin):
+    """Admin configuration for shipping methods."""
 
 
 # ===================== PAYMENT METHODS =====================
 @admin.register(PaymentMethod)
-class PaymentMethodAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price_net', 'vat_rate', 'is_active')
-    list_filter = ('is_active', 'vat_rate')
-    search_fields = ('name',)
+class PaymentMethodAdmin(BaseMethodAdmin):
+    """Admin configuration for payment methods."""
 
 
 # ===================== PRODUCTS =====================
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+    """Admin configuration for products with pricing, stock, and dimensions."""
     list_display = ('name', 'category', 'price_net', 'display_price_gross', 'stock', 'is_active')
     list_filter = ('category', 'is_active', 'vat_rate')
     search_fields = ('name', 'slug', 'description')
@@ -104,14 +109,14 @@ class ProductAdmin(admin.ModelAdmin):
 
     @admin.display(description='Price gross (incl. VAT)')
     def display_price_gross(self, obj: Product) -> str:
-        """Return formatted gross price using the model's property."""
+        """Return the gross price formatted with currency."""
         return f"{obj.price_gross:.2f} Kč"
 
 
 # ===================== ORDER ITEMS (STANDALONE) =====================
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    """Standalone admin view for auditing and searching individual order items across orders."""
+    """Standalone admin for auditing and searching individual order items across orders."""
     list_display = ('order', 'product', 'quantity', 'unit_price_net', 'unit_price_gross')
     list_filter = ('order__status',)
     search_fields = ('product__name', 'order__customer_email')

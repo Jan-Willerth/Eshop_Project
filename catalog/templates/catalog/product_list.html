@@ -9,7 +9,7 @@
     <div class="product-grid">
         {% for product in products %}
             <article class="product-card">
-                <!-- Category Breadcrumb -->
+                {# ---------- BREADCRUMB ---------- #}
                 <nav aria-label="Kategorie produktu" class="product-category">
                     <small>
                         {% if product.category.parent %}
@@ -20,32 +20,41 @@
                     </small>
                 </nav>
 
-                <!-- Title -->
+                {# ---------- TITLE ---------- #}
                 <h2 class="product-title">
-                    <a href="{% url 'catalog:product_detail' slug=product.slug %}">{{ product.name }}</a>
+                    <a href="{% url 'catalog:product_detail' slug=product.slug %}">
+                        {{ product.name }}
+                    </a>
                 </h2>
 
-                <!-- Price -->
+                {# ---------- PRICE ---------- #}
                 <div class="product-pricing">
-                    <strong class="price-gross">{{ product.price_gross|floatformat:"-2" }} Kč</strong>
+                    <strong class="price-gross">
+                        {{ product.price_gross|floatformat:"-2" }} Kč
+                    </strong>
                     {% if product.price_net != product.price_gross %}
-                        <small class="price-net">(bez DPH: {{ product.price_net|floatformat:"-2" }} Kč)</small>
+                        <small class="price-net">
+                            (bez DPH: {{ product.price_net|floatformat:"-2" }} Kč)
+                        </small>
                     {% endif %}
                 </div>
 
-                <!-- Actions -->
+                {# ---------- ACTIONS ---------- #}
                 <div class="product-actions">
-                    <a href="{% url 'catalog:product_detail' slug=product.slug %}" class="btn-detail">Detail</a>
+                    <a href="{% url 'catalog:product_detail' slug=product.slug %}"
+                       class="btn-detail">
+                        Detail
+                    </a>
 
-                    <!-- POST form for state-changing action -->
-                    <form action="{% url 'catalog:add_to_cart' product.id %}" method="post" class="add-to-cart-form">
+                    <form action="{% url 'catalog:add_to_cart' product.id %}"
+                          method="post"
+                          class="add-to-cart-form">
                         {% csrf_token %}
                         <button type="submit" class="btn-primary">Do košíku</button>
                     </form>
                 </div>
             </article>
         {% empty %}
-            <!-- Empty list message -->
             <p class="no-products">Zatím zde nejsou žádné produkty.</p>
         {% endfor %}
     </div>

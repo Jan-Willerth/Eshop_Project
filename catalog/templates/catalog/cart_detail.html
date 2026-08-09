@@ -7,7 +7,7 @@
     <h1 class="cart-title">Košík ({{ total_quantity }} ks)</h1>
 
     {% if items %}
-        <!-- Cart items table -->
+        {# ---------- CART ITEMS ---------- #}
         <table class="cart-table">
             <thead>
                 <tr>
@@ -20,14 +20,16 @@
             </thead>
             <tbody>
                 {% for item in items %}
-                    <tr class="cart-item" data-product-id="{{ item.product.id }}">
-                        <!-- Product info & detail link -->
+                    <tr class="cart-item"
+                        data-product-id="{{ item.product.id }}">
                         <td class="cart-item-info">
                             <strong class="cart-item-name">
-                                <a href="{% url 'catalog:product_detail' slug=item.product.slug %}">{{ item.product.name }}</a>
+                                <a href="{% url 'catalog:product_detail' slug=item.product.slug %}">
+                                    {{ item.product.name }}
+                                </a>
                             </strong>
 
-                            <!-- Overstock warning wrapper for dynamic JS updates -->
+                            {# ---------- OVERSTOCK WARNING ---------- #}
                             <div class="overstock-warning-wrapper"
                                  data-confirmed="{% if item.overstock_confirmed %}true{% else %}false{% endif %}"
                                  style="{% if item.quantity <= item.product.stock or item.overstock_confirmed %}display: none;{% endif %}">
@@ -45,7 +47,6 @@
                             </div>
                         </td>
 
-                        <!-- Quantity form -->
                         <td class="cart-item-quantity">
                             <form id="cart-form-{{ item.product.id }}"
                                   action="{% url 'catalog:add_to_cart' product_id=item.product.id %}"
@@ -54,31 +55,37 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="override" value="on">
                                 <input type="hidden" name="from_cart" value="1">
-                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1">
-                                <button type="submit" class="btn-update" title="Přepočítat">✓</button>
+                                <input type="number"
+                                       name="quantity"
+                                       value="{{ item.quantity }}"
+                                       min="1">
+                                <button type="submit"
+                                        class="btn-update"
+                                        title="Přepočítat">✓</button>
                             </form>
                         </td>
 
-                        <!-- Unit price -->
                         <td class="cart-item-unit-price">
                             {{ item.product.price_gross|floatformat:"-2" }} Kč
                         </td>
 
-                        <!-- Subtotals -->
                         <td class="cart-item-price">
                             <strong>{{ item.subtotal_gross|floatformat:"-2" }} Kč</strong>
                             {% if item.subtotal_net != item.subtotal_gross %}
-                                <br><small class="price-net">bez DPH: {{ item.subtotal_net|floatformat:"-2" }} Kč</small>
+                                <br><small class="price-net">
+                                    bez DPH: {{ item.subtotal_net|floatformat:"-2" }} Kč
+                                </small>
                             {% endif %}
                         </td>
 
-                        <!-- Remove form -->
                         <td class="cart-item-actions">
                             <form action="{% url 'catalog:cart_remove' product_id=item.product.id %}"
                                   method="post"
                                   class="remove-form">
                                 {% csrf_token %}
-                                <button type="submit" class="btn-remove" title="Odstranit z košíku">&times;</button>
+                                <button type="submit"
+                                        class="btn-remove"
+                                        title="Odstranit z košíku">&times;</button>
                             </form>
                         </td>
                     </tr>
@@ -86,7 +93,7 @@
             </tbody>
         </table>
 
-        <!-- Summary block -->
+        {# ---------- CART SUMMARY ---------- #}
         <div class="cart-summary">
             <div class="cart-summary-row total-gross">
                 <span>Celkem s DPH:</span>
@@ -99,17 +106,21 @@
             {% endif %}
         </div>
 
-        <!-- Navigation -->
+        {# ---------- NAVIGATION ---------- #}
         <div class="cart-actions">
-            <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
+            <a href="{% url 'catalog:product_list' %}" class="btn-back">
+                &larr; Zpět na katalog
+            </a>
             <a href="#" class="btn-checkout">Pokračovat k objednávce &rarr;</a>
         </div>
 
     {% else %}
-        <!-- Empty cart message -->
+        {# ---------- EMPTY CART ---------- #}
         <div class="cart-empty-message">
             <p>Košík je prázdný.</p>
-            <a href="{% url 'catalog:product_list' %}" class="btn-back">&larr; Zpět na katalog</a>
+            <a href="{% url 'catalog:product_list' %}" class="btn-back">
+                &larr; Zpět na katalog
+            </a>
         </div>
     {% endif %}
 </div>

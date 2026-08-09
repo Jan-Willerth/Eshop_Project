@@ -6,28 +6,47 @@
 <div class="quote-form-wrapper">
     <h1 class="quote-title">Individuální poptávka</h1>
 
+    {# ---------- QUOTE INTRO ---------- #}
     <div class="quote-intro">
-        <p>Pro objednávky nad 99 ks je nutné individuální posouzení dostupnosti a ceny.<br>
-        Vyplňte prosím níže uvedený formulář.<br>
-        Po jeho odeslání vás budeme kontaktovat s konkrétní nabídkou.</p>
+        <p>
+            Pro objednávky nad 99 ks je nutné individuální posouzení dostupnosti a ceny.<br>
+            Vyplňte prosím níže uvedený formulář.<br>
+            Po jeho odeslání vás budeme kontaktovat s konkrétní nabídkou.
+        </p>
     </div>
 
     <p class="quote-notice">
         <strong>Platba předem:</strong><br>
-        <span class="notice-text">Vzhledem k rozsahu objednávky bude po odsouhlasení nabídky vyžadována <strong>100% platba předem</strong>.</span>
+        <span class="notice-text">
+            Vzhledem k rozsahu objednávky bude po odsouhlasení nabídky vyžadována
+            <strong>100% platba předem</strong>.
+        </span>
     </p>
 
     <p class="quote-notice">
         <strong>Storno podmínky:</strong><br>
-        <span class="notice-text">Pokud po potvrzení objednávky od smlouvy odstoupíte z jiných důvodů, než je nemožnost plnění z naší strany, bude vám účtován <strong>storno poplatek ve výši 10 % z celkové ceny objednávky</strong> na pokrytí vzniklých nákladů.</span>
+        <span class="notice-text">
+            Pokud po potvrzení objednávky od smlouvy odstoupíte z jiných důvodů,
+            než je nemožnost plnění z naší strany, bude vám účtován
+            <strong>storno poplatek ve výši 10 % z celkové ceny objednávky</strong>
+            na pokrytí vzniklých nákladů.
+        </span>
     </p>
 
     <p class="quote-notice">
         <strong>Upozornění:</strong><br>
-        <span class="notice-text">Vzhledem k individuální povaze zakázky se na tuto objednávku <strong>nevztahuje</strong> 14denní lhůta pro odstoupení od smlouvy dle § 1837 písm. d) občanského zákoníku. Odesláním formuláře s tímto souhlasíte.</span>
+        <span class="notice-text">
+            Vzhledem k individuální povaze zakázky se na tuto objednávku
+            <strong>nevztahuje</strong> 14denní lhůta pro odstoupení od smlouvy
+            dle § 1837 písm. d) občanského zákoníku.
+            Odesláním formuláře s tímto souhlasíte.
+        </span>
     </p>
 
-    <form action="{% url 'catalog:custom_quote' %}" method="post" class="quote-form">
+    {# ---------- QUOTE FORM ---------- #}
+    <form action="{% url 'catalog:custom_quote' %}"
+          method="post"
+          class="quote-form">
         {% csrf_token %}
 
         {{ form.product }}
@@ -71,9 +90,12 @@
             {{ form.agreed_to_terms.errors }}
         </div>
 
+        {# ---------- FORM ACTIONS ---------- #}
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Odeslat poptávku</button>
-            <a href="{% url 'catalog:product_list' %}" class="btn btn-secondary">&larr; Zpět na katalog</a>
+            <a href="{% url 'catalog:product_list' %}" class="btn btn-secondary">
+                &larr; Zpět na katalog
+            </a>
         </div>
     </form>
 </div>

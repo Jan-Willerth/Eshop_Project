@@ -90,10 +90,19 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
         cart = request.session.get('cart', {})
         product_key = str(product.id)
 
+        overstock_confirmed = cd.get('overstock_confirmed', False)
+
         if override:
-            cart[product_key] = quantity
+            new_quantity = quantity
         else:
-            cart[product_key] = cart.get(product_key, 0) + quantity
+            existing_entry = cart.get(product_key, 0)
+            existing_qty = existing_entry.get('quantity', 0) if isinstance(existing_entry, dict) else existing_entry
+            new_quantity = existing_qty + quantity
+
+        cart[product_key] = {
+            'quantity': new_quantity,
+            'overstock_confirmed': overstock_confirmed,
+        }
 
         request.session['cart'] = cart
         request.session.modified = True
@@ -101,15 +110,16 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
         items, total_qty, total_net, total_gross = calculate_cart_totals(cart)
 
         stock_warning = None
-        is_overstock = quantity > product.stock
+        is_overstock = new_quantity > product.stock
 
         if product.stock == 0:
             stock_warning = "Zboží není skladem. Předpokládaná dodací lhůta 3–5 pracovních dnů."
         elif is_overstock:
-            stock_warning = f"Požadované množství ({quantity}) přesahuje skladové zásoby ({product.stock}). Dodací lhůta může být prodloužena."
+            stock_warning = f"Požadované množství ({new_quantity}) přesahuje skladové zásoby ({product.stock}). Dodací lhůta může být prodloužena."
 
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             item_subtotal = product.price_gross * quantity if quantity > 0 else Decimal('0.00')
+
             return JsonResponse({
                 'success': True,
                 'message': f'Produkt "{product.name}" byl přidán do košíku.',
@@ -118,9 +128,10 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
                 'total_gross': f"{total_gross:.2f}",
                 'total_net': f"{total_net:.2f}",
                 'item_subtotal': f"{item_subtotal:.2f}",
-                'item_quantity': quantity,
+                'item_quantity': new_quantity,
                 'stock_warning': stock_warning,
                 'is_overstock': is_overstock,
+                'overstock_confirmed': overstock_confirmed,
                 'stock': product.stock,
             })
 

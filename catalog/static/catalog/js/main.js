@@ -165,11 +165,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!qtyInput || !warningWrapper || !submitBtn) return;
 
+        // Zjistíme, jestli bylo toto množství už dřív potvrzené serverem
+        let confirmed = warningWrapper.dataset.confirmed === 'true';
+
         function updateWarningState() {
             const currentQty = parseInt(qtyInput.value, 10) || 0;
             const isOverstock = !isNaN(stockLimit) && currentQty > stockLimit;
 
-            if (isOverstock) {
+            if (isOverstock && confirmed) {
+                // Množství je nad skladem, ale uživatel to už potvrdil -> chováme se jako u běžné položky
+                warningWrapper.style.display = 'none';
+                submitBtn.disabled = false;
+            } else if (isOverstock) {
                 if (qtySpan) qtySpan.textContent = currentQty.toString();
                 warningWrapper.style.display = 'block';
                 submitBtn.disabled = !(checkbox && checkbox.checked);
@@ -183,9 +190,15 @@ document.addEventListener('DOMContentLoaded', function () {
         // Run on load
         updateWarningState();
 
-        // Listen to quantity changes
-        qtyInput.addEventListener('input', updateWarningState);
-        qtyInput.addEventListener('change', updateWarningState);
+        // Jakmile uživatel množství změní, potvrzení už neplatí - vyžádáme si ho znovu
+        qtyInput.addEventListener('input', function () {
+            confirmed = false;
+            updateWarningState();
+        });
+        qtyInput.addEventListener('change', function () {
+            confirmed = false;
+            updateWarningState();
+        });
 
         const hiddenConfirmed = form.querySelector('input[name="overstock_confirmed"]');
 
@@ -259,12 +272,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (warningWrapper) {
                         const qtySpanEl = warningWrapper.querySelector('.qty-val');
                         const checkbox = warningWrapper.querySelector('.overstock-checkbox');
-                        if (data.is_overstock) {
+                        const rowSubmitBtn = row.querySelector('.quantity-form button[type="submit"]');
+
+                        // Uložíme si aktuální stav potvrzení pro příště
+                        warningWrapper.dataset.confirmed = data.overstock_confirmed ? 'true' : 'false';
+
+                        if (data.is_overstock && !data.overstock_confirmed) {
                             if (qtySpanEl) qtySpanEl.textContent = data.item_quantity;
                             warningWrapper.style.display = 'block';
+                            if (rowSubmitBtn) rowSubmitBtn.disabled = !(checkbox && checkbox.checked);
                         } else {
+                            // Buď v rámci skladu, nebo overstock už potvrzený -> schovat a odemknout
                             warningWrapper.style.display = 'none';
                             if (checkbox) checkbox.checked = false;
+                            if (rowSubmitBtn) rowSubmitBtn.disabled = false;
                         }
                     }
 

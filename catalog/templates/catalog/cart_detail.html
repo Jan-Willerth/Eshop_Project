@@ -28,8 +28,10 @@
                             </strong>
 
                             <!-- Overstock warning wrapper for dynamic JS updates -->
-                            <div class="overstock-warning-wrapper" style="{% if item.quantity <= item.product.stock %}display: none;{% endif %}">
-                                {% include "catalog/includes/overstock_warning.html" with quantity=item.quantity stock=item.product.stock %}
+                            <div class="overstock-warning-wrapper"
+                                 data-confirmed="{% if item.overstock_confirmed %}true{% else %}false{% endif %}"
+                                 style="{% if item.quantity <= item.product.stock or item.overstock_confirmed %}display: none;{% endif %}">
+                                {% include "catalog/includes/overstock_warning.html" with quantity=item.quantity stock=item.product.stock product_id=item.product.id %}
                             </div>
 
                             <div class="cart-item-category">
@@ -45,7 +47,8 @@
 
                         <!-- Quantity form -->
                         <td class="cart-item-quantity">
-                            <form action="{% url 'catalog:add_to_cart' product_id=item.product.id %}"
+                            <form id="cart-form-{{ item.product.id }}"
+                                  action="{% url 'catalog:add_to_cart' product_id=item.product.id %}"
                                   method="post"
                                   class="quantity-form">
                                 {% csrf_token %}

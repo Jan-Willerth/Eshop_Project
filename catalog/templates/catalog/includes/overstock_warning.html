@@ -3,7 +3,11 @@
         ⚠️ Požadované množství (<span class="qty-val">{{ quantity }}</span> ks) přesahuje skladové zásoby (skladem <span class="stock-val">{{ stock }}</span> ks). Dodací lhůta může být prodloužena.
     </p>
     <label style="cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; margin: 0;">
-        <input type="checkbox" name="overstock_confirmed" class="overstock-checkbox" value="true">
+        <input type="checkbox"
+               name="overstock_confirmed"
+               class="overstock-checkbox"
+               value="true"
+               {% if product_id %}form="cart-form-{{ product_id }}"{% endif %}>
         Beru na vědomí delší dobu dodání
     </label>
 </div>

@@ -5,16 +5,18 @@ from .models import Product
 
 
 # ===================== CART UTILITIES =====================
-def calculate_cart_totals(cart: Dict[str, int]) -> Tuple[List[Dict[str, Any]], int, Decimal, Decimal]:
+def calculate_cart_totals(cart: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], int, Decimal, Decimal]:
     """
     Compute detailed cart information from session cart dictionary.
 
     Args:
-        cart: Mapping of product ID strings to quantities.
+        cart: Mapping of product ID strings to either:
+              - a dict {'quantity': int, 'overstock_confirmed': bool} (new format), or
+              - a plain int (legacy format, treated as overstock_confirmed=False).
 
     Returns:
         A tuple containing:
-            - list of item dicts (product, quantity, subtotal_net, subtotal_gross)
+            - list of item dicts (product, quantity, subtotal_net, subtotal_gross, overstock_confirmed)
             - total quantity across all items
             - total net price
             - total gross price
@@ -28,7 +30,7 @@ def calculate_cart_totals(cart: Dict[str, int]) -> Tuple[List[Dict[str, Any]], i
     total_net = Decimal('0.00')
     total_gross = Decimal('0.00')
 
-    for product_id_str, quantity in cart.items():
+    for product_id_str, entry in cart.items():
         if not product_id_str.isdigit():
             continue
         product_id = int(product_id_str)
@@ -36,7 +38,14 @@ def calculate_cart_totals(cart: Dict[str, int]) -> Tuple[List[Dict[str, Any]], i
         if product is None:
             continue
 
-        # Normalise quantity
+        # Support both the new dict format and the legacy plain-int format
+        if isinstance(entry, dict):
+            quantity = entry.get('quantity', 1)
+            overstock_confirmed = bool(entry.get('overstock_confirmed', False))
+        else:
+            quantity = entry
+            overstock_confirmed = False
+
         qty = int(quantity) if isinstance(quantity, int) else 1
         if qty < 1:
             qty = 1
@@ -49,6 +58,7 @@ def calculate_cart_totals(cart: Dict[str, int]) -> Tuple[List[Dict[str, Any]], i
             'quantity': qty,
             'subtotal_net': item_net,
             'subtotal_gross': item_gross,
+            'overstock_confirmed': overstock_confirmed,
         })
 
         total_quantity += qty

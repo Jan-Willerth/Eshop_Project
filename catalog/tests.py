@@ -723,11 +723,49 @@ class OrderViewTestCase(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
 
-        # Ověříme, že e-mail obsahuje PDF přílohu
         self.assertEqual(len(email.attachments), 1)
         filename, content, mimetype = email.attachments[0]
         self.assertEqual(mimetype, 'application/pdf')
-        self.assertTrue(filename.startswith('faktura_'))
+        self.assertTrue(filename.startswith('danovy_doklad_'))
+
+    def test_checkout_summary_post_sends_pdf_for_consumer_order(self):
+        """POST sends a simplified tax document PDF attachment for a B2C order too."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+        }
+        session['pending_order'] = {
+            'customer_email': 'jan@example.com',
+            'customer_phone': '+420123456789',
+            'shipping_first_name': 'Jan',
+            'shipping_last_name': 'Novák',
+            'shipping_street': 'Hlavní 1',
+            'shipping_city': 'Praha',
+            'shipping_zip_code': '11000',
+            'shipping_method_id': self.shipping_method.id,
+            'payment_method_id': self.payment_method.id,
+            'billing_different': False,
+            'billing_first_name': '',
+            'billing_last_name': '',
+            'billing_company_name': '',
+            'billing_ico': '',
+            'billing_dic': '',
+            'billing_street': '',
+            'billing_city': '',
+            'billing_zip_code': '',
+        }
+        session.save()
+
+        url = reverse('catalog:checkout_summary')
+        self.client.post(url)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+
+        self.assertEqual(len(email.attachments), 1)
+        filename, content, mimetype = email.attachments[0]
+        self.assertEqual(mimetype, 'application/pdf')
+        self.assertTrue(filename.startswith('zjednoduseny_danovy_doklad_'))
 
     def test_checkout_summary_get_redirects_without_pending_order(self):
         """GET summary page redirects to checkout form if no pending_order in session."""

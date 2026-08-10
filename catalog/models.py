@@ -7,6 +7,12 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle, Paragraph
+from reportlab.lib.styles import ParagraphStyle
+
 
 # ===================== VAT RATE =====================
 class VatRate(models.Model):
@@ -271,29 +277,91 @@ class QuoteRequest(models.Model):
 
 # ===================== SIGNALS =====================
 def generate_invoice_pdf(order):
-    """Generate a PDF invoice for a business order and return bytes."""
+    """Generate a tax document PDF for an order (full for business, simplified for consumers)."""
+    pdfmetrics.registerFont(TTFont('DejaVu', 'C:/Windows/Fonts/arial.ttf'))
+    pdfmetrics.registerFont(TTFont('DejaVu-Bold', 'C:/Windows/Fonts/arialbd.ttf'))
+
+    cell_style = ParagraphStyle(name='CellStyle', fontName='DejaVu', fontSize=8, leading=10)
+
+    is_business = bool(order.billing_company_name)
+    document_title = "Daňový doklad" if is_business else "Zjednodušený daňový doklad"
+
     buf = io.BytesIO()
     p = canvas.Canvas(buf, pagesize=A4)
     width, height = A4
 
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, height - 60, f"Faktura č. {order.id}")
-    p.setFont("Helvetica", 12)
+    p.setFont("DejaVu-Bold", 16)
+    p.drawString(50, height - 60, f"{document_title} č. {order.id}")
+    p.setFont("DejaVu", 12)
     y = height - 100
-    p.drawString(50, y, f"Dodavatel: Můj E-shop s.r.o.")
-    y -= 20
-    p.drawString(50, y, f"Odběratel: {order.billing_company_name or ''}, {order.billing_street}, {order.billing_city}")
-    y -= 20
-    p.drawString(50, y, f"IČO: {order.billing_ico or ''}, DIČ: {order.billing_dic or ''}")
-    y -= 40
-    p.drawString(50, y, "Položky:")
-    y -= 20
-    for item in order.items.all():
-        line = f"{item.product.name} x {item.quantity} = {item.unit_price_gross * item.quantity:.2f} Kč"
-        p.drawString(70, y, line)
+    if is_business:
+        p.drawString(50, y, f"Dodavatel: Můj E-shop s.r.o.")
         y -= 20
-    y -= 10
-    p.drawString(50, y, f"Celkem: {order.total_price_gross:.2f} Kč")
+        p.drawString(50, y,
+                     f"Odběratel: {order.billing_company_name or ''}, {order.billing_street}, {order.billing_city}")
+        y -= 20
+        p.drawString(50, y, f"IČO: {order.billing_ico or ''}, DIČ: {order.billing_dic or ''}")
+    else:
+        p.drawString(50, y, f"Dodavatel: Můj E-shop s.r.o.")
+        y -= 20
+        p.drawString(50, y,
+                     f"Odběratel: {order.shipping_first_name} {order.shipping_last_name}, {order.shipping_street}, {order.shipping_city}")
+    y -= 40
+
+    rows = [["Položka", "Počet", "Cena/ks bez DPH", "DPH", "Cena/ks s DPH", "Celkem bez DPH", "Celkem s DPH"]]
+
+    for item in order.items.all():
+        rows.append([
+            Paragraph(item.product.name, cell_style),
+            str(item.quantity),
+            f"{item.unit_price_net:.2f} Kč",
+            f"{item.vat_rate:.0f} %",
+            f"{item.unit_price_gross:.2f} Kč",
+            f"{item.unit_price_net * item.quantity:.2f} Kč",
+            f"{item.unit_price_gross * item.quantity:.2f} Kč",
+        ])
+
+    rows.append([
+        Paragraph(f"Doprava ({order.shipping_method.name})", cell_style),
+        "1",
+        f"{order.shipping_price_net:.2f} Kč",
+        f"{order.shipping_vat_rate:.0f} %",
+        f"{(order.shipping_price_net * (1 + order.shipping_vat_rate / 100)):.2f} Kč",
+        f"{order.shipping_price_net:.2f} Kč",
+        f"{(order.shipping_price_net * (1 + order.shipping_vat_rate / 100)):.2f} Kč",
+    ])
+
+    rows.append([
+        Paragraph(f"Platba ({order.payment_method.name})", cell_style),
+        "1",
+        f"{order.payment_price_net:.2f} Kč",
+        f"{order.payment_vat_rate:.0f} %",
+        f"{order.payment_price_gross:.2f} Kč",
+        f"{order.payment_price_net:.2f} Kč",
+        f"{order.payment_price_gross:.2f} Kč",
+    ])
+
+    table = Table(rows, colWidths=[130, 40, 75, 35, 75, 75, 75])
+    table.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('FONTNAME', (0, 0), (-1, 0), 'DejaVu-Bold'),
+        ('FONTNAME', (0, 1), (-1, -1), 'DejaVu'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    table_width, table_height = table.wrapOn(p, width - 100, y)
+    table.drawOn(p, 50, y - table_height)
+    y = y - table_height - 30
+
+    p.setFont("DejaVu-Bold", 12)
+    p.drawString(50, y, f"Celkem bez DPH: {order.total_price_net:.2f} Kč")
+    y -= 20
+    vat_amount = order.total_price_gross - order.total_price_net
+    p.drawString(50, y, f"DPH celkem: {vat_amount:.2f} Kč")
+    y -= 20
+    p.drawString(50, y, f"Celkem k úhradě: {order.total_price_gross:.2f} Kč")
 
     p.showPage()
     p.save()
@@ -304,12 +372,16 @@ def generate_invoice_pdf(order):
 
 @receiver(post_save, sender=Order)
 def send_order_confirmation(sender, instance, created, **kwargs):
-    """Send confirmation email, with PDF invoice for business orders."""
+    """Send confirmation email with the tax document (daňový doklad / zjednodušený daňový doklad) attached."""
     if not created:
         return
 
+    is_business = bool(instance.billing_company_name)
+    document_label = 'Daňový doklad' if is_business else 'Zjednodušený daňový doklad'
+    filename_prefix = 'danovy_doklad' if is_business else 'zjednoduseny_danovy_doklad'
+
     subject = f'Potvrzení objednávky č. {instance.id}'
-    body = 'Děkujeme za objednávku. Daňový doklad, případně fakturu, vám zašleme e-mailem.'
+    body = f'Děkujeme za objednávku. {document_label} k objednávce naleznete v příloze tohoto e-mailu.'
     email = EmailMessage(
         subject=subject,
         body=body,
@@ -317,8 +389,7 @@ def send_order_confirmation(sender, instance, created, **kwargs):
         to=[instance.customer_email],
     )
 
-    if instance.billing_company_name:
-        pdf = generate_invoice_pdf(instance)
-        email.attach(f'faktura_{instance.id}.pdf', pdf, 'application/pdf')
+    pdf = generate_invoice_pdf(instance)
+    email.attach(f'{filename_prefix}_{instance.id}.pdf', pdf, 'application/pdf')
 
     email.send()

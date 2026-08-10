@@ -14,6 +14,9 @@ urlpatterns = [
     path('cart/remove/<int:product_id>/', views.cart_remove, name='cart_remove'),
     path('cart/', views.cart_detail, name='cart_detail'),
 
+    # ===================== ORDER =====================
+    path('checkout/', views.checkout, name='checkout'),
+
     # ===================== QUOTE =====================
     path('quote/', views.custom_quote, name='custom_quote'),
 ]

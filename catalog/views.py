@@ -7,7 +7,7 @@ from django.utils.safestring import mark_safe
 from django.urls import reverse
 
 from .models import Category, Product
-from .forms import CartAddProductForm, QuoteRequestForm
+from .forms import CartAddProductForm, QuoteRequestForm, OrderForm
 from .cart_utils import calculate_cart_totals
 
 
@@ -213,3 +213,16 @@ def cart_detail(request: HttpRequest) -> HttpResponse:
         'total_net': total_net,
         'total_gross': total_gross,
     })
+
+
+# ===================== ORDER VIEWS =====================
+def checkout(request: HttpRequest) -> HttpResponse:
+    """Display and validate the checkout form."""
+    if request.method == 'POST':
+        form = OrderForm(request.POST)
+        if form.is_valid():
+            return redirect('catalog:product_list')
+    else:
+        form = OrderForm()
+
+    return render(request, 'catalog/checkout.html', {'form': form})

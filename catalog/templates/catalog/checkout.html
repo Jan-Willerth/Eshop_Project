@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Pokladna | E-shop{% endblock %}
+
+{% block content %}
+<div class="checkout">
+    <h1>Dokončení objednávky</h1>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Odeslat objednávku</button>
+    </form>
+</div>
+{% endblock %}

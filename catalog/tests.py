@@ -385,3 +385,63 @@ class OrderFormTestCase(TestCase):
         form = OrderForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('billing_ico', form.errors)
+
+
+# ===================== ORDER VIEW TESTS =====================
+class OrderViewTestCase(TestCase):
+    """Test suite for the checkout view (Blok 6)."""
+
+    def setUp(self):
+        self.vat_standard = VatRate.objects.create(
+            label='21%',
+            rate=Decimal('21.00'),
+            is_active=True
+        )
+        self.shipping_method = ShippingMethod.objects.create(
+            name='Balík do ruky',
+            price_net=Decimal('99.00'),
+            vat_rate=self.vat_standard,
+            is_active=True
+        )
+        self.payment_method = PaymentMethod.objects.create(
+            name='Platba kartou',
+            price_net=Decimal('0.00'),
+            vat_rate=self.vat_standard,
+            is_active=True
+        )
+        self.base_data = {
+            'customer_email': 'jan@example.com',
+            'customer_phone': '+420123456789',
+            'shipping_first_name': 'Jan',
+            'shipping_last_name': 'Novák',
+            'shipping_street': 'Hlavní 1',
+            'shipping_city': 'Praha',
+            'shipping_zip_code': '11000',
+            'shipping_method': self.shipping_method.id,
+            'payment_method': self.payment_method.id,
+        }
+
+    def test_checkout_get_renders_form(self):
+        """GET request renders the checkout page with an OrderForm instance."""
+        url = reverse('catalog:checkout')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.context['form'], OrderForm)
+
+    def test_checkout_post_invalid_data_rerenders_with_errors(self):
+        """POST with missing required field re-renders the form with errors, status 200."""
+        url = reverse('catalog:checkout')
+        invalid_data = {**self.base_data, 'customer_email': ''}
+        response = self.client.post(url, invalid_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['form'].is_valid())
+        self.assertIn('customer_email', response.context['form'].errors)
+
+    def test_checkout_post_valid_data_redirects(self):
+        """POST with valid data redirects away from the checkout page."""
+        url = reverse('catalog:checkout')
+        response = self.client.post(url, self.base_data)
+
+        self.assertEqual(response.status_code, 302)

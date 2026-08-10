@@ -1,5 +1,5 @@
 from django import forms
-from .models import QuoteRequest
+from .models import QuoteRequest, ShippingMethod, PaymentMethod
 
 
 # ===================== CART FORMS =====================
@@ -101,3 +101,45 @@ class QuoteRequestForm(forms.ModelForm):
         if qty is None or qty < 1:
             raise forms.ValidationError("Neplatné množství.")
         return qty
+
+
+# ===================== ORDER FORM =====================
+class OrderForm(forms.Form):
+    """Validate checkout data, requiring billing details only when billing_different is checked."""
+
+    customer_email = forms.EmailField()
+    customer_phone = forms.CharField(max_length=50)
+
+    shipping_first_name = forms.CharField(max_length=100)
+    shipping_last_name = forms.CharField(max_length=100)
+    shipping_street = forms.CharField(max_length=255)
+    shipping_city = forms.CharField(max_length=100)
+    shipping_zip_code = forms.CharField(max_length=20)
+
+    shipping_method = forms.ModelChoiceField(queryset=ShippingMethod.objects.filter(is_active=True))
+    payment_method = forms.ModelChoiceField(queryset=PaymentMethod.objects.filter(is_active=True))
+
+    billing_different = forms.BooleanField(required=False, label="Chci fakturu na firmu")
+    billing_first_name = forms.CharField(max_length=100, required=False)
+    billing_last_name = forms.CharField(max_length=100, required=False)
+    billing_company_name = forms.CharField(max_length=150, required=False)
+    billing_ico = forms.CharField(max_length=20, required=False)
+    billing_dic = forms.CharField(max_length=20, required=False)
+    billing_street = forms.CharField(max_length=255, required=False)
+    billing_city = forms.CharField(max_length=100, required=False)
+    billing_zip_code = forms.CharField(max_length=20, required=False)
+
+    def clean(self):
+        """Require billing_company_name, billing_ico, and billing address when billing_different is checked."""
+        cleaned_data = super().clean()
+
+        if cleaned_data.get('billing_different'):
+            required_billing_fields = [
+                'billing_company_name', 'billing_ico',
+                'billing_street', 'billing_city', 'billing_zip_code',
+            ]
+            for field_name in required_billing_fields:
+                if not cleaned_data.get(field_name):
+                    self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
+
+        return cleaned_data

@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.test import TestCase, Client
 from django.urls import reverse
 
-from catalog.models import Category, Product, VatRate
+from catalog.models import Category, Product, VatRate, ShippingMethod, PaymentMethod
 
 
 # ===================== CART TESTS =====================
@@ -314,3 +314,74 @@ class CartViewsTestCase(TestCase):
         self.assertIn('stock_warning', data)
         self.assertIsNotNone(data['stock_warning'])
         self.assertIn('není skladem', data['stock_warning'])
+
+
+# ===================== ORDER FORM TESTS =====================
+from catalog.forms import OrderForm
+
+
+class OrderFormTestCase(TestCase):
+    """Test suite for the checkout OrderForm (Blok 6)."""
+
+    def setUp(self):
+        self.vat_standard = VatRate.objects.create(
+            label='21%',
+            rate=Decimal('21.00'),
+            is_active=True
+        )
+        self.shipping_method = ShippingMethod.objects.create(
+            name='Balík do ruky',
+            price_net=Decimal('99.00'),
+            vat_rate=self.vat_standard,
+            is_active=True
+        )
+        self.payment_method = PaymentMethod.objects.create(
+            name='Platba kartou',
+            price_net=Decimal('0.00'),
+            vat_rate=self.vat_standard,
+            is_active=True
+        )
+        self.base_data = {
+            'customer_email': 'jan@example.com',
+            'customer_phone': '+420123456789',
+            'shipping_first_name': 'Jan',
+            'shipping_last_name': 'Novák',
+            'shipping_street': 'Hlavní 1',
+            'shipping_city': 'Praha',
+            'shipping_zip_code': '11000',
+            'shipping_method': self.shipping_method.id,
+            'payment_method': self.payment_method.id,
+        }
+
+    def test_order_form_valid_data(self):
+        """A fully filled-in form with required fields only is valid."""
+        form = OrderForm(data=self.base_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_order_form_billing_different_valid(self):
+        """When billing_different is checked, complete billing data is valid."""
+        form_data = {
+            **self.base_data,
+            'billing_different': True,
+            'billing_company_name': 'Firma s.r.o.',
+            'billing_ico': '12345678',
+            'billing_street': 'Firemní 5',
+            'billing_city': 'Brno',
+            'billing_zip_code': '60200',
+        }
+        form = OrderForm(data=form_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_order_form_billing_different_missing_ico(self):
+        """When billing_different is checked, missing billing_ico is invalid."""
+        form_data = {
+            **self.base_data,
+            'billing_different': True,
+            'billing_company_name': 'Firma s.r.o.',
+            'billing_street': 'Firemní 5',
+            'billing_city': 'Brno',
+            'billing_zip_code': '60200',
+        }
+        form = OrderForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('billing_ico', form.errors)

@@ -6,7 +6,7 @@
 <div class="checkout">
     <h1>Dokončení objednávky</h1>
 
-    <form method="post" novalidate>
+    <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Odeslat objednávku</button>

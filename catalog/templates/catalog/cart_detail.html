@@ -111,7 +111,7 @@
             <a href="{% url 'catalog:product_list' %}" class="btn-back">
                 &larr; Zpět na katalog
             </a>
-            <a href="#" class="btn-checkout">Pokračovat k objednávce &rarr;</a>
+            <a href="{% url 'catalog:checkout' %}" class="btn-checkout">Pokračovat k objednávce &rarr;</a>
         </div>
 
     {% else %}

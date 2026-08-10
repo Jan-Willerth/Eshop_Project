@@ -81,6 +81,13 @@ class ShippingMethod(models.Model):
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
     is_active = models.BooleanField(default=True)
 
+    @property
+    def price_gross(self) -> Decimal:
+        """Return gross price including VAT."""
+        if self.vat_rate and self.vat_rate.rate:
+            return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
+        return self.price_net
+
     def __str__(self) -> str:
         return self.name
 
@@ -96,6 +103,13 @@ class PaymentMethod(models.Model):
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
     is_active = models.BooleanField(default=True)
+
+    @property
+    def price_gross(self) -> Decimal:
+        """Return gross price including VAT."""
+        if self.vat_rate and self.vat_rate.rate:
+            return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
+        return self.price_net
 
     def __str__(self) -> str:
         return self.name

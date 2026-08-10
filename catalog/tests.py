@@ -386,6 +386,46 @@ class OrderFormTestCase(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('billing_ico', form.errors)
 
+    def test_order_form_capitalizes_shipping_names(self):
+        """Shipping first/last name are capitalized regardless of input casing."""
+        form_data = {**self.base_data, 'shipping_first_name': 'jan', 'shipping_last_name': 'novák'}
+        form = OrderForm(data=form_data)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['shipping_first_name'], 'Jan')
+        self.assertEqual(form.cleaned_data['shipping_last_name'], 'Novák')
+
+    def test_order_form_billing_ico_invalid_length(self):
+        """billing_ico must be exactly 8 digits when billing_different is checked."""
+        form_data = {
+            **self.base_data,
+            'billing_different': True,
+            'billing_company_name': 'Firma s.r.o.',
+            'billing_ico': '123',
+            'billing_street': 'Firemní 5',
+            'billing_city': 'Brno',
+            'billing_zip_code': '60200',
+        }
+        form = OrderForm(data=form_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('billing_ico', form.errors)
+
+    def test_order_form_billing_ico_valid_length(self):
+        """billing_ico with exactly 8 digits passes validation."""
+        form_data = {
+            **self.base_data,
+            'billing_different': True,
+            'billing_company_name': 'Firma s.r.o.',
+            'billing_ico': '12345678',
+            'billing_street': 'Firemní 5',
+            'billing_city': 'Brno',
+            'billing_zip_code': '60200',
+        }
+        form = OrderForm(data=form_data)
+
+        self.assertTrue(form.is_valid(), form.errors)
+
 
 # ===================== ORDER VIEW TESTS =====================
 class OrderViewTestCase(TestCase):
@@ -445,3 +485,35 @@ class OrderViewTestCase(TestCase):
         response = self.client.post(url, self.base_data)
 
         self.assertEqual(response.status_code, 302)
+
+
+# ===================== SHIPPING & PAYMENT MODEL TESTS =====================
+class ShippingPaymentModelTestCase(TestCase):
+    """Test suite for gross price calculation on ShippingMethod and PaymentMethod."""
+
+    def setUp(self):
+        self.vat_standard = VatRate.objects.create(
+            label='21%',
+            rate=Decimal('21.00'),
+            is_active=True
+        )
+
+    def test_shipping_method_price_gross(self):
+        """ShippingMethod.price_gross includes VAT on top of price_net."""
+        shipping = ShippingMethod.objects.create(
+            name='Zásilkovna',
+            price_net=Decimal('89.00'),
+            vat_rate=self.vat_standard,
+            is_active=True
+        )
+        self.assertEqual(shipping.price_gross, Decimal('107.69'))
+
+    def test_payment_method_price_gross(self):
+        """PaymentMethod.price_gross includes VAT on top of price_net."""
+        payment = PaymentMethod.objects.create(
+            name='Dobírka',
+            price_net=Decimal('40.00'),
+            vat_rate=self.vat_standard,
+            is_active=True
+        )
+        self.assertEqual(payment.price_gross, Decimal('48.40'))

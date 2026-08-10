@@ -1,5 +1,21 @@
+import re
 from django import forms
 from .models import QuoteRequest, ShippingMethod, PaymentMethod
+
+
+# ===================== CHOICE FIELDS =====================
+class ShippingMethodChoiceField(forms.ModelChoiceField):
+    """ModelChoiceField that displays the gross price alongside the shipping method name."""
+
+    def label_from_instance(self, obj):
+        return f"{obj.name} — {obj.price_gross:.2f} Kč"
+
+
+class PaymentMethodChoiceField(forms.ModelChoiceField):
+    """ModelChoiceField that displays the gross price alongside the payment method name."""
+
+    def label_from_instance(self, obj):
+        return f"{obj.name} — {obj.price_gross:.2f} Kč"
 
 
 # ===================== CART FORMS =====================
@@ -107,27 +123,43 @@ class QuoteRequestForm(forms.ModelForm):
 class OrderForm(forms.Form):
     """Validate checkout data, requiring billing details only when billing_different is checked."""
 
-    customer_email = forms.EmailField()
-    customer_phone = forms.CharField(max_length=50)
+    customer_email = forms.EmailField(label='E-mail')
+    customer_phone = forms.CharField(max_length=50, label='Telefon')
 
-    shipping_first_name = forms.CharField(max_length=100)
-    shipping_last_name = forms.CharField(max_length=100)
-    shipping_street = forms.CharField(max_length=255)
-    shipping_city = forms.CharField(max_length=100)
-    shipping_zip_code = forms.CharField(max_length=20)
+    shipping_first_name = forms.CharField(max_length=100, label='Jméno')
+    shipping_last_name = forms.CharField(max_length=100, label='Příjmení')
+    shipping_street = forms.CharField(max_length=255, label='Ulice a číslo popisné')
+    shipping_city = forms.CharField(max_length=100, label='Město')
+    shipping_zip_code = forms.CharField(max_length=20, label='PSČ')
 
-    shipping_method = forms.ModelChoiceField(queryset=ShippingMethod.objects.filter(is_active=True))
-    payment_method = forms.ModelChoiceField(queryset=PaymentMethod.objects.filter(is_active=True))
+    shipping_method = ShippingMethodChoiceField(queryset=ShippingMethod.objects.filter(is_active=True),
+                                                label='Způsob dopravy')
+    payment_method = PaymentMethodChoiceField(queryset=PaymentMethod.objects.filter(is_active=True),
+                                              label='Způsob platby')
 
     billing_different = forms.BooleanField(required=False, label="Chci fakturu na firmu")
-    billing_first_name = forms.CharField(max_length=100, required=False)
-    billing_last_name = forms.CharField(max_length=100, required=False)
-    billing_company_name = forms.CharField(max_length=150, required=False)
-    billing_ico = forms.CharField(max_length=20, required=False)
-    billing_dic = forms.CharField(max_length=20, required=False)
-    billing_street = forms.CharField(max_length=255, required=False)
-    billing_city = forms.CharField(max_length=100, required=False)
-    billing_zip_code = forms.CharField(max_length=20, required=False)
+    billing_first_name = forms.CharField(max_length=100, required=False, label='Jméno (kontaktní osoba)')
+    billing_last_name = forms.CharField(max_length=100, required=False, label='Příjmení (kontaktní osoba)')
+    billing_company_name = forms.CharField(max_length=150, required=False, label='Název firmy')
+    billing_ico = forms.CharField(
+        max_length=20,
+        required=False,
+        label='IČO',
+        widget=forms.TextInput(
+            attrs={'pattern': r'\d{8}', 'maxlength': '8', 'title': 'IČO musí obsahovat přesně 8 číslic.'})
+    )
+    billing_dic = forms.CharField(max_length=20, required=False, label='DIČ')
+    billing_street = forms.CharField(max_length=255, required=False, label='Ulice a číslo popisné (fakturační)')
+    billing_city = forms.CharField(max_length=100, required=False, label='Město (fakturační)')
+    billing_zip_code = forms.CharField(max_length=20, required=False, label='PSČ (fakturační)')
+
+    def clean_shipping_first_name(self) -> str:
+        """Capitalize the shipping first name."""
+        return self.cleaned_data.get('shipping_first_name', '').strip().capitalize()
+
+    def clean_shipping_last_name(self) -> str:
+        """Capitalize the shipping last name."""
+        return self.cleaned_data.get('shipping_last_name', '').strip().capitalize()
 
     def clean(self):
         """Require billing_company_name, billing_ico, and billing address when billing_different is checked."""
@@ -141,5 +173,9 @@ class OrderForm(forms.Form):
             for field_name in required_billing_fields:
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
+
+            billing_ico = cleaned_data.get('billing_ico')
+            if billing_ico and not re.fullmatch(r'\d{8}', billing_ico):
+                self.add_error('billing_ico', 'IČO musí obsahovat přesně 8 číslic.')
 
         return cleaned_data

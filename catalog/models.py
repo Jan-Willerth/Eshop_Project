@@ -1,7 +1,12 @@
 from decimal import Decimal
+import io
 
 from django.db import models
-
+from django.core.mail import EmailMessage
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
 # ===================== VAT RATE =====================
 class VatRate(models.Model):
@@ -262,3 +267,58 @@ class QuoteRequest(models.Model):
 
     def __repr__(self) -> str:
         return f"<QuoteRequest(id={self.id}, email='{self.email}', processed={self.processed})>"
+
+
+# ===================== SIGNALS =====================
+def generate_invoice_pdf(order):
+    """Generate a PDF invoice for a business order and return bytes."""
+    buf = io.BytesIO()
+    p = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, height - 60, f"Faktura č. {order.id}")
+    p.setFont("Helvetica", 12)
+    y = height - 100
+    p.drawString(50, y, f"Dodavatel: Můj E-shop s.r.o.")
+    y -= 20
+    p.drawString(50, y, f"Odběratel: {order.billing_company_name or ''}, {order.billing_street}, {order.billing_city}")
+    y -= 20
+    p.drawString(50, y, f"IČO: {order.billing_ico or ''}, DIČ: {order.billing_dic or ''}")
+    y -= 40
+    p.drawString(50, y, "Položky:")
+    y -= 20
+    for item in order.items.all():
+        line = f"{item.product.name} x {item.quantity} = {item.unit_price_gross * item.quantity:.2f} Kč"
+        p.drawString(70, y, line)
+        y -= 20
+    y -= 10
+    p.drawString(50, y, f"Celkem: {order.total_price_gross:.2f} Kč")
+
+    p.showPage()
+    p.save()
+    pdf = buf.getvalue()
+    buf.close()
+    return pdf
+
+
+@receiver(post_save, sender=Order)
+def send_order_confirmation(sender, instance, created, **kwargs):
+    """Send confirmation email, with PDF invoice for business orders."""
+    if not created:
+        return
+
+    subject = f'Potvrzení objednávky č. {instance.id}'
+    body = 'Děkujeme za objednávku. Daňový doklad, případně fakturu, vám zašleme e-mailem.'
+    email = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email=None,
+        to=[instance.customer_email],
+    )
+
+    if instance.billing_company_name:
+        pdf = generate_invoice_pdf(instance)
+        email.attach(f'faktura_{instance.id}.pdf', pdf, 'application/pdf')
+
+    email.send()

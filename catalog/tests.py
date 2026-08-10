@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.core import mail
 
 from catalog.models import Category, Product, VatRate, ShippingMethod, PaymentMethod, OrderStatus, Order
 
@@ -632,6 +633,83 @@ class OrderViewTestCase(TestCase):
 
         self.assertNotIn('cart', self.client.session)
         self.assertNotIn('pending_order', self.client.session)
+
+    def test_checkout_summary_post_sends_confirmation_email(self):
+        """POST creates an order and sends a confirmation email."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+        }
+        session['pending_order'] = {
+            'customer_email': 'jan@example.com',
+            'customer_phone': '+420123456789',
+            'shipping_first_name': 'Jan',
+            'shipping_last_name': 'Novák',
+            'shipping_street': 'Hlavní 1',
+            'shipping_city': 'Praha',
+            'shipping_zip_code': '11000',
+            'shipping_method_id': self.shipping_method.id,
+            'payment_method_id': self.payment_method.id,
+            'billing_different': False,
+            'billing_first_name': '',
+            'billing_last_name': '',
+            'billing_company_name': '',
+            'billing_ico': '',
+            'billing_dic': '',
+            'billing_street': '',
+            'billing_city': '',
+            'billing_zip_code': '',
+        }
+        session.save()
+
+        url = reverse('catalog:checkout_summary')
+        self.client.post(url)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.subject, f'Potvrzení objednávky č. 1')
+        self.assertIn('jan@example.com', email.to)
+        self.assertIn('Děkujeme za objednávku', email.body)
+
+    def test_checkout_summary_post_sends_pdf_for_business_order(self):
+        """POST sends a PDF invoice attachment when billing_different is True."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+        }
+        session['pending_order'] = {
+            'customer_email': 'firma@example.com',
+            'customer_phone': '+420987654321',
+            'shipping_first_name': 'Petr',
+            'shipping_last_name': 'Svoboda',
+            'shipping_street': 'Obchodní 10',
+            'shipping_city': 'Brno',
+            'shipping_zip_code': '60200',
+            'shipping_method_id': self.shipping_method.id,
+            'payment_method_id': self.payment_method.id,
+            'billing_different': True,
+            'billing_first_name': 'Petr',
+            'billing_last_name': 'Svoboda',
+            'billing_company_name': 'Firma s.r.o.',
+            'billing_ico': '12345678',
+            'billing_dic': 'CZ12345678',
+            'billing_street': 'Obchodní 10',
+            'billing_city': 'Brno',
+            'billing_zip_code': '60200',
+        }
+        session.save()
+
+        url = reverse('catalog:checkout_summary')
+        self.client.post(url)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+
+        # Ověříme, že e-mail obsahuje PDF přílohu
+        self.assertEqual(len(email.attachments), 1)
+        filename, content, mimetype = email.attachments[0]
+        self.assertEqual(mimetype, 'application/pdf')
+        self.assertTrue(filename.startswith('faktura_'))
 
     def test_checkout_summary_get_redirects_without_pending_order(self):
         """GET summary page redirects to checkout form if no pending_order in session."""

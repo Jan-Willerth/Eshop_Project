@@ -5,8 +5,9 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.utils.safestring import mark_safe
 from django.urls import reverse
+from django.db import transaction
 
-from .models import Category, Product, ShippingMethod, PaymentMethod
+from .models import Category, Product, ShippingMethod, PaymentMethod, OrderStatus, Order, OrderItem
 from .forms import CartAddProductForm, QuoteRequestForm, OrderForm
 from .cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
 
@@ -261,7 +262,7 @@ def checkout(request: HttpRequest) -> HttpResponse:
 
 
 def checkout_summary(request: HttpRequest) -> HttpResponse:
-    """Display an order summary with cart items, shipping/payment price, and grand total."""
+    """Display an order summary and handle order creation on POST."""
     pending_order = request.session.get('pending_order')
     if not pending_order:
         return redirect('catalog:checkout')
@@ -275,6 +276,62 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
     grand_total_net = products_total_net + shipping.price_net + payment.price_net
     grand_total_gross = products_total_gross + shipping.price_gross + payment.price_gross
 
+    if request.method == 'POST':
+        if not items:
+            messages.error(request, 'Košík je prázdný.')
+            return redirect('catalog:cart_detail')
+
+        order_status, _ = OrderStatus.objects.get_or_create(
+            code='new', defaults={'name': 'Nová'}
+        )
+
+        with transaction.atomic():
+            order = Order.objects.create(
+                user=None,
+                status=order_status,
+                shipping_method=shipping,
+                payment_method=payment,
+                shipping_price_net=shipping.price_net,
+                shipping_vat_rate=shipping.vat_rate.rate,
+                payment_price_net=payment.price_net,
+                payment_price_gross=payment.price_gross,
+                payment_vat_rate=payment.vat_rate.rate,
+                total_price_net=grand_total_net,
+                total_price_gross=grand_total_gross,
+                customer_email=pending_order['customer_email'],
+                customer_phone=pending_order['customer_phone'],
+                shipping_first_name=pending_order['shipping_first_name'],
+                shipping_last_name=pending_order['shipping_last_name'],
+                shipping_street=pending_order['shipping_street'],
+                shipping_city=pending_order['shipping_city'],
+                shipping_zip_code=pending_order['shipping_zip_code'],
+                billing_first_name=pending_order.get('billing_first_name', ''),
+                billing_last_name=pending_order.get('billing_last_name', ''),
+                billing_company_name=pending_order.get('billing_company_name', ''),
+                billing_ico=pending_order.get('billing_ico', ''),
+                billing_dic=pending_order.get('billing_dic', ''),
+                billing_street=pending_order.get('billing_street', ''),
+                billing_city=pending_order.get('billing_city', ''),
+                billing_zip_code=pending_order.get('billing_zip_code', ''),
+            )
+
+            for item in items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item['product'],
+                    quantity=item['quantity'],
+                    unit_price_net=item['product'].price_net,
+                    unit_price_gross=item['product'].price_gross,
+                    vat_rate=item['product'].vat_rate.rate,
+                )
+
+        request.session.pop('cart', None)
+        request.session.pop('pending_order', None)
+        request.session.modified = True
+
+        messages.success(request, 'Objednávka byla úspěšně vytvořena!')
+        return redirect('catalog:order_success', order_id=order.id)
+
     return render(request, 'catalog/checkout_summary.html', {
         'pending_order': pending_order,
         'items': items,
@@ -285,3 +342,9 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
         'grand_total_net': grand_total_net,
         'grand_total_gross': grand_total_gross,
     })
+
+
+def order_success(request: HttpRequest, order_id: int) -> HttpResponse:
+    """Display the thank-you page after a successful order."""
+    order = get_object_or_404(Order, id=order_id)
+    return render(request, 'catalog/order_success.html', {'order': order})

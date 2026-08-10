@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.test import TestCase, Client
 from django.urls import reverse
 
-from catalog.models import Category, Product, VatRate, ShippingMethod, PaymentMethod
+from catalog.models import Category, Product, VatRate, ShippingMethod, PaymentMethod, OrderStatus, Order
 
 
 # ===================== CART TESTS =====================
@@ -469,6 +469,7 @@ class OrderViewTestCase(TestCase):
             stock=5,
             is_active=True
         )
+        self.order_status = OrderStatus.objects.create(code='new', name='Nová')
 
     def test_checkout_get_renders_form(self):
         """GET request renders the checkout page with an OrderForm instance."""
@@ -583,6 +584,54 @@ class OrderViewTestCase(TestCase):
         self.assertEqual(context['payment'].price_gross, self.payment_method.price_gross)
         self.assertEqual(context['grand_total_net'], expected_grand_total_net)
         self.assertEqual(context['grand_total_gross'], expected_grand_total)
+
+    def test_checkout_summary_post_creates_order_and_clears_session(self):
+        """POST creates an Order with items and clears the session."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+        }
+        session['pending_order'] = {
+            'customer_email': 'jan@example.com',
+            'customer_phone': '+420123456789',
+            'shipping_first_name': 'Jan',
+            'shipping_last_name': 'Novák',
+            'shipping_street': 'Hlavní 1',
+            'shipping_city': 'Praha',
+            'shipping_zip_code': '11000',
+            'shipping_method_id': self.shipping_method.id,
+            'payment_method_id': self.payment_method.id,
+            'billing_different': False,
+            'billing_first_name': '',
+            'billing_last_name': '',
+            'billing_company_name': '',
+            'billing_ico': '',
+            'billing_dic': '',
+            'billing_street': '',
+            'billing_city': '',
+            'billing_zip_code': '',
+        }
+        session.save()
+
+        url = reverse('catalog:checkout_summary')
+        response = self.client.post(url)
+
+        self.assertRedirects(response, reverse('catalog:order_success', kwargs={'order_id': 1}))
+
+        self.assertEqual(Order.objects.count(), 1)
+        order = Order.objects.first()
+
+        self.assertEqual(order.items.count(), 1)
+
+        expected_total = (
+                self.limited_product.price_gross * 2
+                + self.shipping_method.price_gross
+                + self.payment_method.price_gross
+        )
+        self.assertEqual(order.total_price_gross, expected_total)
+
+        self.assertNotIn('cart', self.client.session)
+        self.assertNotIn('pending_order', self.client.session)
 
     def test_checkout_summary_get_redirects_without_pending_order(self):
         """GET summary page redirects to checkout form if no pending_order in session."""

@@ -213,6 +213,7 @@ def cart_detail(request: HttpRequest) -> HttpResponse:
         'total_quantity': total_quantity,
         'total_net': total_net,
         'total_gross': total_gross,
+        'has_unconfirmed_overstock': cart_has_unconfirmed_overstock(cart),
     })
 
 

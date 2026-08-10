@@ -352,4 +352,27 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+
+    // ===================== CART DETAIL: BLOCK CHECKOUT ON UNCONFIRMED TYPED OVERSTOCK =====================
+    const checkoutLink = document.getElementById('btn-checkout');
+    if (checkoutLink) {
+        checkoutLink.addEventListener('click', function (e) {
+            const visibleWarnings = document.querySelectorAll('.overstock-warning-wrapper');
+            let hasUnconfirmedTyped = false;
+
+            visibleWarnings.forEach(function (wrapper) {
+                if (window.getComputedStyle(wrapper).display !== 'none') {
+                    hasUnconfirmedTyped = true;
+                }
+            });
+
+            if (hasUnconfirmedTyped) {
+                e.preventDefault();
+                alert(
+                    'V košíku máte zboží, které překračuje naše skladové zásoby.\n' +
+                    'Potvrďte formulář s podmínkami nebo odstraňte položku z košíku.'
+                );
+            }
+        });
+    }
 });

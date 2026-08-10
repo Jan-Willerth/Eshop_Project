@@ -164,6 +164,23 @@ class CartViewsTestCase(TestCase):
             {'quantity': 5, 'overstock_confirmed': False}
         )
 
+    def test_cart_detail_shows_warning_for_unconfirmed_overstock(self):
+        """Cart detail page warns and hides checkout link when overstock is unconfirmed."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.product_limited.id): {
+                'quantity': 10,
+                'overstock_confirmed': False
+            }
+        }
+        session.save()
+
+        url = reverse('catalog:cart_detail')
+        response = self.client.get(url)
+
+        self.assertContains(response, 'V košíku máte zboží, které překračuje naše skladové zásoby')
+        self.assertNotContains(response, reverse('catalog:checkout'))
+
     # ===================== CART CONTEXT TESTS =====================
     def test_cart_detail_context(self):
         """Cart detail view returns items, totals, and correct subtotals."""
@@ -667,7 +684,8 @@ class OrderViewTestCase(TestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
-        self.assertEqual(email.subject, f'Potvrzení objednávky č. 1')
+        order = Order.objects.first()
+        self.assertEqual(email.subject, f'Potvrzení objednávky č. {order.id}')
         self.assertIn('jan@example.com', email.to)
         self.assertIn('Děkujeme za objednávku', email.body)
 

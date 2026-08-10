@@ -16,6 +16,7 @@ urlpatterns = [
 
     # ===================== ORDER =====================
     path('checkout/', views.checkout, name='checkout'),
+    path('checkout/summary/', views.checkout_summary, name='checkout_summary'),
 
     # ===================== QUOTE =====================
     path('quote/', views.custom_quote, name='custom_quote'),

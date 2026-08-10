@@ -54,3 +54,28 @@ def calculate_cart_totals(cart: Dict[str, Union[int, Dict[str, Any]]]) -> Tuple[
         total_gross += item_gross
 
     return items, total_quantity, total_net, total_gross
+
+
+def cart_has_unconfirmed_overstock(cart: Dict[str, Any]) -> bool:
+    """Check whether the cart contains any item exceeding stock without overstock confirmation."""
+    product_ids = [int(pid) for pid in cart.keys() if pid.isdigit()]
+    products_dict = {p.id: p for p in Product.objects.filter(id__in=product_ids)}
+
+    for product_id_str, entry in cart.items():
+        if not product_id_str.isdigit():
+            continue
+        product = products_dict.get(int(product_id_str))
+        if product is None:
+            continue
+
+        if isinstance(entry, dict):
+            quantity = entry.get('quantity', 0)
+            overstock_confirmed = bool(entry.get('overstock_confirmed', False))
+        else:
+            quantity = entry
+            overstock_confirmed = False
+
+        if quantity > product.stock and not overstock_confirmed:
+            return True
+
+    return False

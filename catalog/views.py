@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from .models import Category, Product
 from .forms import CartAddProductForm, QuoteRequestForm, OrderForm
-from .cart_utils import calculate_cart_totals
+from .cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
 
 
 # ===================== CATALOG VIEWS =====================
@@ -218,11 +218,48 @@ def cart_detail(request: HttpRequest) -> HttpResponse:
 # ===================== ORDER VIEWS =====================
 def checkout(request: HttpRequest) -> HttpResponse:
     """Display and validate the checkout form."""
+    cart = request.session.get('cart', {})
+
+    if cart_has_unconfirmed_overstock(cart):
+        messages.error(
+            request,
+            'V košíku máte položky přesahující skladové zásoby. '
+            'Pro pokračování je nutné potvrdit souhlas s delší dodací lhůtou.'
+        )
+        return redirect('catalog:cart_detail')
+
     if request.method == 'POST':
         form = OrderForm(request.POST)
         if form.is_valid():
-            return redirect('catalog:product_list')
+            cd = form.cleaned_data
+            request.session['pending_order'] = {
+                'customer_email': cd['customer_email'],
+                'customer_phone': cd['customer_phone'],
+                'shipping_first_name': cd['shipping_first_name'],
+                'shipping_last_name': cd['shipping_last_name'],
+                'shipping_street': cd['shipping_street'],
+                'shipping_city': cd['shipping_city'],
+                'shipping_zip_code': cd['shipping_zip_code'],
+                'shipping_method_id': cd['shipping_method'].id,
+                'payment_method_id': cd['payment_method'].id,
+                'billing_different': cd['billing_different'],
+                'billing_first_name': cd['billing_first_name'],
+                'billing_last_name': cd['billing_last_name'],
+                'billing_company_name': cd['billing_company_name'],
+                'billing_ico': cd['billing_ico'],
+                'billing_dic': cd['billing_dic'],
+                'billing_street': cd['billing_street'],
+                'billing_city': cd['billing_city'],
+                'billing_zip_code': cd['billing_zip_code'],
+            }
+            request.session.modified = True
+            return redirect('catalog:checkout_summary')
     else:
         form = OrderForm()
 
     return render(request, 'catalog/checkout.html', {'form': form})
+
+
+def checkout_summary(request: HttpRequest) -> HttpResponse:
+    """Placeholder for the order summary page (Podblok 7.2)."""
+    return HttpResponse("TODO: souhrnná stránka")

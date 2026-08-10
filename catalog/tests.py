@@ -460,6 +460,15 @@ class OrderViewTestCase(TestCase):
             'shipping_method': self.shipping_method.id,
             'payment_method': self.payment_method.id,
         }
+        self.limited_product = Product.objects.create(
+            name='Spectrum PLA – bílá',
+            slug='spectrum-pla-bila-checkout',
+            price_net=Decimal('450.00'),
+            vat_rate=self.vat_standard,
+            category=Category.objects.create(name='Filamenty', slug='filamenty-checkout', is_active=True),
+            stock=5,
+            is_active=True
+        )
 
     def test_checkout_get_renders_form(self):
         """GET request renders the checkout page with an OrderForm instance."""
@@ -485,6 +494,97 @@ class OrderViewTestCase(TestCase):
         response = self.client.post(url, self.base_data)
 
         self.assertEqual(response.status_code, 302)
+
+    def test_checkout_get_redirects_when_cart_has_unconfirmed_overstock(self):
+        """GET checkout redirects to cart with an error when cart has unconfirmed overstock."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 10, 'overstock_confirmed': False}
+        }
+        session.save()
+
+        url = reverse('catalog:checkout')
+        response = self.client.get(url)
+
+        self.assertRedirects(response, reverse('catalog:cart_detail'))
+
+    def test_checkout_post_rejected_when_cart_has_unconfirmed_overstock(self):
+        """POST checkout does not process the order when cart has unconfirmed overstock."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 10, 'overstock_confirmed': False}
+        }
+        session.save()
+
+        url = reverse('catalog:checkout')
+        response = self.client.post(url, self.base_data)
+
+        self.assertRedirects(response, reverse('catalog:cart_detail'))
+
+    def test_checkout_post_valid_saves_pending_order_and_redirects_to_summary(self):
+        """Valid POST saves form data to session['pending_order'] and redirects to summary."""
+        url = reverse('catalog:checkout')
+        response = self.client.post(url, self.base_data)
+
+        self.assertRedirects(response, reverse('catalog:checkout_summary'))
+
+        pending_order = self.client.session.get('pending_order')
+        self.assertIsNotNone(pending_order)
+        self.assertEqual(pending_order['customer_email'], 'jan@example.com')
+        self.assertEqual(pending_order['shipping_method_id'], self.shipping_method.id)
+        self.assertEqual(pending_order['payment_method_id'], self.payment_method.id)
+
+    def test_checkout_summary_get_shows_items_and_totals(self):
+        """GET summary page shows cart items, shipping/payment price, and grand total."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+        }
+        session['pending_order'] = {
+            'customer_email': 'jan@example.com',
+            'customer_phone': '+420123456789',
+            'shipping_first_name': 'Jan',
+            'shipping_last_name': 'Novák',
+            'shipping_street': 'Hlavní 1',
+            'shipping_city': 'Praha',
+            'shipping_zip_code': '11000',
+            'shipping_method_id': self.shipping_method.id,
+            'payment_method_id': self.payment_method.id,
+            'billing_different': False,
+            'billing_first_name': '',
+            'billing_last_name': '',
+            'billing_company_name': '',
+            'billing_ico': '',
+            'billing_dic': '',
+            'billing_street': '',
+            'billing_city': '',
+            'billing_zip_code': '',
+        }
+        session.save()
+
+        url = reverse('catalog:checkout_summary')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        context = response.context
+
+        self.assertEqual(len(context['items']), 1)
+        self.assertEqual(context['items'][0]['quantity'], 2)
+
+        expected_products_gross = self.limited_product.price_gross * 2
+        expected_grand_total = expected_products_gross + self.shipping_method.price_gross + self.payment_method.price_gross
+
+        self.assertEqual(context['products_total_gross'], expected_products_gross)
+        self.assertEqual(context['shipping'].price_gross, self.shipping_method.price_gross)
+        self.assertEqual(context['payment'].price_gross, self.payment_method.price_gross)
+        self.assertEqual(context['grand_total_gross'], expected_grand_total)
+
+    def test_checkout_summary_get_redirects_without_pending_order(self):
+        """GET summary page redirects to checkout form if no pending_order in session."""
+        url = reverse('catalog:checkout_summary')
+        response = self.client.get(url)
+
+        self.assertRedirects(response, reverse('catalog:checkout'))
 
 
 # ===================== SHIPPING & PAYMENT MODEL TESTS =====================

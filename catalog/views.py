@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.utils.safestring import mark_safe
 from django.urls import reverse
 
-from .models import Category, Product
+from .models import Category, Product, ShippingMethod, PaymentMethod
 from .forms import CartAddProductForm, QuoteRequestForm, OrderForm
 from .cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
 
@@ -261,5 +261,27 @@ def checkout(request: HttpRequest) -> HttpResponse:
 
 
 def checkout_summary(request: HttpRequest) -> HttpResponse:
-    """Placeholder for the order summary page (Podblok 7.2)."""
-    return HttpResponse("TODO: souhrnná stránka")
+    """Display an order summary with cart items, shipping/payment price, and grand total."""
+    pending_order = request.session.get('pending_order')
+    if not pending_order:
+        return redirect('catalog:checkout')
+
+    cart = request.session.get('cart', {})
+    items, total_qty, products_total_net, products_total_gross = calculate_cart_totals(cart)
+
+    shipping = get_object_or_404(ShippingMethod, id=pending_order['shipping_method_id'])
+    payment = get_object_or_404(PaymentMethod, id=pending_order['payment_method_id'])
+
+    grand_total_net = products_total_net + shipping.price_net + payment.price_net
+    grand_total_gross = products_total_gross + shipping.price_gross + payment.price_gross
+
+    return render(request, 'catalog/checkout_summary.html', {
+        'pending_order': pending_order,
+        'items': items,
+        'products_total_net': products_total_net,
+        'products_total_gross': products_total_gross,
+        'shipping': shipping,
+        'payment': payment,
+        'grand_total_net': grand_total_net,
+        'grand_total_gross': grand_total_gross,
+    })

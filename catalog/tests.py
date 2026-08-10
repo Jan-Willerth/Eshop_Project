@@ -535,7 +535,7 @@ class OrderViewTestCase(TestCase):
         self.assertEqual(pending_order['payment_method_id'], self.payment_method.id)
 
     def test_checkout_summary_get_shows_items_and_totals(self):
-        """GET summary page shows cart items, shipping/payment price, and grand total."""
+        """GET summary page shows item totals and the net grand total."""
         session = self.client.session
         session['cart'] = {
             str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
@@ -572,11 +572,16 @@ class OrderViewTestCase(TestCase):
         self.assertEqual(context['items'][0]['quantity'], 2)
 
         expected_products_gross = self.limited_product.price_gross * 2
+        expected_products_net = self.limited_product.price_net * 2
+        expected_grand_total_net = (
+            expected_products_net + self.shipping_method.price_net + self.payment_method.price_net
+        )
         expected_grand_total = expected_products_gross + self.shipping_method.price_gross + self.payment_method.price_gross
 
         self.assertEqual(context['products_total_gross'], expected_products_gross)
         self.assertEqual(context['shipping'].price_gross, self.shipping_method.price_gross)
         self.assertEqual(context['payment'].price_gross, self.payment_method.price_gross)
+        self.assertEqual(context['grand_total_net'], expected_grand_total_net)
         self.assertEqual(context['grand_total_gross'], expected_grand_total)
 
     def test_checkout_summary_get_redirects_without_pending_order(self):

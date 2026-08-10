@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Shrnutí objednávky | E-shop{% endblock %}
+
+{% block content %}
+<div class="checkout-summary">
+    <h1>Shrnutí objednávky</h1>
+
+    <table class="cart-table">
+        <thead>
+            <tr>
+                <th scope="col">Produkt</th>
+                <th scope="col">Počet</th>
+                <th scope="col">Cena za kus</th>
+                <th scope="col">DPH</th>
+                <th scope="col">Celkem bez DPH</th>
+                <th scope="col">Celkem</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.product.price_gross|floatformat:"-2" }} Kč</td>
+                    <td>{{ item.product.vat_rate.rate|floatformat:"-2" }} %</td>
+                    <td>{{ item.subtotal_net|floatformat:"-2" }} Kč</td>
+                    <td>{{ item.subtotal_gross|floatformat:"-2" }} Kč</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="checkout-summary-totals">
+        <p>Zboží celkem: <strong>{{ products_total_gross|floatformat:"-2" }} Kč</strong></p>
+        <p>Doprava ({{ shipping.name }}): <strong>{{ shipping.price_gross|floatformat:"-2" }} Kč</strong></p>
+        <p>Platba ({{ payment.name }}): <strong>{{ payment.price_gross|floatformat:"-2" }} Kč</strong></p>
+        <p>Celkem bez DPH: <strong>{{ grand_total_net|floatformat:"-2" }} Kč</strong></p>
+        <p class="checkout-grand-total">Celkem k úhradě: <strong>{{ grand_total_gross|floatformat:"-2" }} Kč</strong></p>
+    </div>
+
+    <h2>Doručovací a fakturační údaje</h2>
+    <p>{{ pending_order.shipping_first_name }} {{ pending_order.shipping_last_name }}</p>
+    <p>{{ pending_order.shipping_street }}, {{ pending_order.shipping_city }}, {{ pending_order.shipping_zip_code }}</p>
+    <p>{{ pending_order.customer_email }} / {{ pending_order.customer_phone }}</p>
+
+    <form method="post" id="confirm-order-form">
+        {% csrf_token %}
+       <button type="submit" onclick="return confirm('Opravdu chcete závazně vytvořit objednávku?');">
+            Dokončit objednávku
+       </button>
+    </form>
+</div>
+{% endblock %}

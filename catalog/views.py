@@ -116,7 +116,8 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
             stock_warning = f"Požadované množství ({new_quantity}) přesahuje skladové zásoby ({product.stock}). Dodací lhůta může být prodloužena."
 
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            item_subtotal = product.price_gross * quantity if quantity > 0 else Decimal('0.00')
+            item_subtotal_net = product.price_net * new_quantity if new_quantity > 0 else Decimal('0.00')
+            item_subtotal_gross = product.price_gross * new_quantity if new_quantity > 0 else Decimal('0.00')
 
             return JsonResponse({
                 'success': True,
@@ -125,7 +126,9 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
                 'cart_total_quantity': total_qty,
                 'total_gross': f"{total_gross:.2f}",
                 'total_net': f"{total_net:.2f}",
-                'item_subtotal': f"{item_subtotal:.2f}",
+                'item_subtotal': f"{item_subtotal_gross:.2f}",
+                'item_subtotal_net': f"{item_subtotal_net:.2f}",
+                'item_subtotal_gross': f"{item_subtotal_gross:.2f}",
                 'item_quantity': new_quantity,
                 'stock_warning': stock_warning,
                 'is_overstock': is_overstock,

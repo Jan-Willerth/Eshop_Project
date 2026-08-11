@@ -74,9 +74,9 @@
 
                         <td>{{ item.product.price_gross|floatformat:"-2" }} Kč</td>
 
-                        <td>{{ item.subtotal_net|floatformat:"-2" }} Kč</td>
+                        <td class="cart-item-subtotal-net">{{ item.subtotal_net|floatformat:"-2" }} Kč</td>
 
-                        <td><strong>{{ item.subtotal_gross|floatformat:"-2" }} Kč</strong></td>
+                        <td class="cart-item-subtotal-gross"><strong>{{ item.subtotal_gross|floatformat:"-2" }} Kč</strong></td>
 
                         <td class="cart-item-actions">
                             <form action="{% url 'catalog:cart_remove' product_id=item.product.id %}"

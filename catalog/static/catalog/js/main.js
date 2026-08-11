@@ -233,8 +233,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         totalNetEl.textContent = 'Celkem bez DPH: ' + data.total_net + ' Kč';
                     }
 
-                    const subtotalCell = row.querySelector('.cart-item-price strong');
-                    if (subtotalCell) subtotalCell.textContent = data.item_subtotal + ' Kč';
+                    const subtotalNetCell = row.querySelector('.cart-item-subtotal-net');
+                    if (subtotalNetCell) subtotalNetCell.textContent = data.item_subtotal_net + ' Kč';
+
+                    const subtotalGrossCell = row.querySelector('.cart-item-subtotal-gross strong');
+                    if (subtotalGrossCell) subtotalGrossCell.textContent = data.item_subtotal_gross + ' Kč';
 
                     if (qtyInput) qtyInput.value = data.item_quantity;
 

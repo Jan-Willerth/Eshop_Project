@@ -16,9 +16,12 @@
                 <th scope="col">Počet</th>
                 <th scope="col">Cena za kus bez DPH</th>
                 <th scope="col">DPH</th>
+                <th scope="col">Cena za kus s DPH</th>
+                <th scope="col">Celkem bez DPH</th>
                 <th scope="col">Celkem s DPH</th>
             </tr>
         </thead>
+
         <tbody>
             {% for row in order_items %}
                 <tr>
@@ -26,6 +29,8 @@
                     <td>{{ row.item.quantity }}</td>
                     <td>{{ row.item.unit_price_net|floatformat:"-2" }} Kč</td>
                     <td>{{ row.item.vat_rate|floatformat:"-2" }} %</td>
+                    <td>{{ row.item.unit_price_gross|floatformat:"-2" }} Kč</td>
+                    <td>{{ row.total_net|floatformat:"-2" }} Kč</td>
                     <td>{{ row.total_gross|floatformat:"-2" }} Kč</td>
                 </tr>
             {% endfor %}
@@ -39,15 +44,23 @@
     <p><strong>Celkem k úhradě:</strong> {{ order.total_price_gross|floatformat:"-2" }} Kč</p>
 
     <h2>Doručovací údaje</h2>
-    <p>{{ order.shipping_first_name }} {{ order.shipping_last_name }}</p>
-    <p>{{ order.shipping_street }}, {{ order.shipping_city }}, {{ order.shipping_zip_code }}</p>
-    <p>{{ order.customer_email }} / {{ order.customer_phone }}</p>
+
+    <p><strong>Jméno:</strong> {{ order.shipping_first_name }} {{ order.shipping_last_name }}</p>
+    <p><strong>Adresa:</strong> {{ order.shipping_street }}, {{ order.shipping_city }}, {{ order.shipping_zip_code }}</p>
+    <p><strong>E-mail:</strong> {{ order.customer_email }}</p>
+    <p><strong>Telefon:</strong> {{ order.customer_phone }}</p>
 
     {% if order.billing_company_name %}
-        <h2>Fakturační údaje</h2>
-        <p>{{ order.billing_company_name }}</p>
-        <p>IČO: {{ order.billing_ico }}{% if order.billing_dic %}, DIČ: {{ order.billing_dic }}{% endif %}</p>
-        <p>{{ order.billing_street }}, {{ order.billing_city }}, {{ order.billing_zip_code }}</p>
+    <h2>Fakturační údaje</h2>
+
+    <p><strong>Firma:</strong> {{ order.billing_company_name }}</p>
+    <p><strong>IČO:</strong> {{ order.billing_ico }}</p>
+    
+    {% if order.billing_dic %}
+    <p><strong>DIČ:</strong> {{ order.billing_dic }}</p>
+    {% endif %}
+
+    <p><strong>Adresa:</strong> {{ order.billing_street }}, {{ order.billing_city }}, {{ order.billing_zip_code }}</p>
     {% endif %}
 
     <p><a href="{% url 'catalog:order_invoice_download' order.id %}">Stáhnout doklad PDF</a></p>

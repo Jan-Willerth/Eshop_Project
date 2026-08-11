@@ -11,10 +11,11 @@
             <tr>
                 <th scope="col">Produkt</th>
                 <th scope="col">Počet</th>
-                <th scope="col">Cena za kus</th>
+                <th scope="col">Cena za kus bez DPH</th>
                 <th scope="col">DPH</th>
+                <th scope="col">Cena za kus s DPH</th>
                 <th scope="col">Celkem bez DPH</th>
-                <th scope="col">Celkem</th>
+                <th scope="col">Celkem s DPH</th>
             </tr>
         </thead>
         <tbody>
@@ -22,8 +23,9 @@
                 <tr>
                     <td>{{ item.product.name }}</td>
                     <td>{{ item.quantity }}</td>
-                    <td>{{ item.product.price_gross|floatformat:"-2" }} Kč</td>
+                    <td>{{ item.product.price_net|floatformat:"-2" }} Kč</td>
                     <td>{{ item.product.vat_rate.rate|floatformat:"-2" }} %</td>
+                    <td>{{ item.product.price_gross|floatformat:"-2" }} Kč</td>
                     <td>{{ item.subtotal_net|floatformat:"-2" }} Kč</td>
                     <td>{{ item.subtotal_gross|floatformat:"-2" }} Kč</td>
                 </tr>

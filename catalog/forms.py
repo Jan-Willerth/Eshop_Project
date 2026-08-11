@@ -1,6 +1,8 @@
 import re
 from django import forms
-from .models import QuoteRequest, ShippingMethod, PaymentMethod
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
+from .models import QuoteRequest, ShippingMethod, PaymentMethod, Profile
 
 
 # ===================== CHOICE FIELDS =====================
@@ -179,3 +181,89 @@ class OrderForm(forms.Form):
                 self.add_error('billing_ico', 'IČO musí obsahovat přesně 8 číslic.')
 
         return cleaned_data
+
+
+# ===================== REGISTRATION FORM =====================
+class RegistrationForm(UserCreationForm):
+    """Registration form based on Django's UserCreationForm, using email as the username, with contact/address."""
+
+    email = forms.EmailField(required=True, label='E-mail')
+    password1 = forms.CharField(
+        label='Heslo',
+        strip=False,
+        widget=forms.PasswordInput,
+        help_text='Heslo musí mít alespoň 8 znaků a nesmí být čistě číselné ani příliš běžné.',
+    )
+    password2 = forms.CharField(
+        label='Potvrzení hesla',
+        strip=False,
+        widget=forms.PasswordInput,
+        help_text='Zadejte stejné heslo znovu pro kontrolu.',
+        error_messages={'password_mismatch': 'Zadaná hesla se neshodují.'},
+    )
+    first_name = forms.CharField(max_length=100, required=True, label='Jméno')
+    last_name = forms.CharField(max_length=100, required=True, label='Příjmení')
+    phone = forms.CharField(
+        max_length=50,
+        required=True,
+        label='Telefon',
+        widget=forms.TextInput(attrs={
+            'inputmode': 'tel',
+            'pattern': r'\+?[0-9 ]{9,15}',
+            'maxlength': '15',
+            'title': 'Zadejte telefonní číslo (např. 732258910 nebo +420732258910).',
+        })
+    )
+    street = forms.CharField(max_length=255, required=True, label='Ulice a číslo popisné')
+    city = forms.CharField(max_length=100, required=True, label='Město')
+    zip_code = forms.CharField(
+        max_length=20,
+        required=True,
+        label='PSČ',
+        widget=forms.TextInput(attrs={
+            'inputmode': 'numeric',
+            'pattern': r'\d{5}',
+            'maxlength': '5',
+            'title': 'PSČ musí obsahovat přesně 5 číslic (bez mezery).',
+        })
+    )
+
+    class Meta:
+        model = User
+        fields = ['email', 'first_name', 'last_name', 'password1', 'password2']
+
+    def clean_email(self) -> str:
+        """Ensure the email is unique across users."""
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('Uživatel s tímto e-mailem již existuje.')
+        return email
+
+    def clean_password2(self):
+        """Validate that both password fields match, using our Czech error message."""
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError(
+                self.fields['password2'].error_messages['password_mismatch'],
+                code='password_mismatch',
+            )
+        return password2
+
+    def save(self, commit=True):
+        """Create the User with email as username, plus a linked Profile with contact/address data."""
+        user = super().save(commit=False)
+        user.username = self.cleaned_data['email']
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        if commit:
+            user.save()
+            Profile.objects.create(
+                user=user,
+                phone=self.cleaned_data['phone'],
+                street=self.cleaned_data['street'],
+                city=self.cleaned_data['city'],
+                zip_code=self.cleaned_data['zip_code'],
+            )
+        return user

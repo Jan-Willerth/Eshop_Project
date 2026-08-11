@@ -805,3 +805,55 @@ class ShippingPaymentModelTestCase(TestCase):
             is_active=True
         )
         self.assertEqual(payment.price_gross, Decimal('48.40'))
+
+
+# ===================== REGISTRATION FORM TESTS =====================
+from django.contrib.auth.models import User
+from catalog.forms import RegistrationForm
+
+
+class RegistrationFormTestCase(TestCase):
+    """Test suite for the RegistrationForm (Blok 8)."""
+
+    def setUp(self):
+        self.valid_data = {
+            'email': 'novy@example.com',
+            'first_name': 'Jan',
+            'last_name': 'Novák',
+            'phone': '+420123456789',
+            'street': 'Hlavní 1',
+            'city': 'Praha',
+            'zip_code': '11000',
+            'password1': 'SilneHeslo123',
+            'password2': 'SilneHeslo123',
+        }
+
+    def test_registration_form_valid_data(self):
+        """Valid data produces a valid form."""
+        form = RegistrationForm(data=self.valid_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_registration_form_duplicate_email(self):
+        """Registering with an already-used email is invalid."""
+        User.objects.create_user(username='existujici@example.com', email='existujici@example.com', password='Heslo123456')
+
+        form = RegistrationForm(data={**self.valid_data, 'email': 'existujici@example.com'})
+        self.assertFalse(form.is_valid())
+        self.assertIn('email', form.errors)
+
+    def test_registration_form_saves_user_and_profile(self):
+        """Saving the form creates a User (email as username) and a linked Profile."""
+        form = RegistrationForm(data=self.valid_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+        user = form.save()
+
+        self.assertEqual(user.username, 'novy@example.com')
+        self.assertEqual(user.email, 'novy@example.com')
+        self.assertEqual(user.first_name, 'Jan')
+        self.assertEqual(user.last_name, 'Novák')
+
+        self.assertEqual(user.profile.phone, '+420123456789')
+        self.assertEqual(user.profile.street, 'Hlavní 1')
+        self.assertEqual(user.profile.city, 'Praha')
+        self.assertEqual(user.profile.zip_code, '11000')

@@ -5,6 +5,7 @@ from django.db import models
 from django.core.mail import EmailMessage
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
@@ -41,21 +42,6 @@ class OrderStatus(models.Model):
 
     def __repr__(self) -> str:
         return f"<OrderStatus(id={self.id}, code='{self.code}')>"
-
-
-# ===================== USER =====================
-class User(models.Model):
-    """Registered user account."""
-
-    username = models.CharField(max_length=100, unique=True)
-    email = models.EmailField(unique=True)
-    password = models.CharField(max_length=255)
-
-    def __str__(self) -> str:
-        return self.username
-
-    def __repr__(self) -> str:
-        return f"<User(id={self.id}, username='{self.username}')>"
 
 
 # ===================== CATEGORY =====================
@@ -188,7 +174,7 @@ class Product(models.Model):
 class Order(models.Model):
     """Customer order with frozen price snapshots, delivery, and billing details."""
 
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
     status = models.ForeignKey(OrderStatus, on_delete=models.PROTECT, related_name='orders')
     shipping_method = models.ForeignKey(ShippingMethod, on_delete=models.PROTECT)
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
@@ -273,6 +259,23 @@ class QuoteRequest(models.Model):
 
     def __repr__(self) -> str:
         return f"<QuoteRequest(id={self.id}, email='{self.email}', processed={self.processed})>"
+
+
+# ===================== PROFILE =====================
+class Profile(models.Model):
+    """Extended user data (contact and address) linked to the built-in Django User."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    phone = models.CharField(max_length=50, blank=True)
+    street = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    zip_code = models.CharField(max_length=20, blank=True)
+
+    def __str__(self) -> str:
+        return f"Profil {self.user.email}"
+
+    def __repr__(self) -> str:
+        return f"<Profile(id={self.id}, user_id={self.user_id})>"
 
 
 # ===================== SIGNALS =====================

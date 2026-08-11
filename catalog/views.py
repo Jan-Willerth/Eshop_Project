@@ -3,12 +3,13 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from django.contrib.auth import login as auth_login
 from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.db import transaction
 
 from .models import Category, Product, ShippingMethod, PaymentMethod, OrderStatus, Order, OrderItem
-from .forms import CartAddProductForm, QuoteRequestForm, OrderForm
+from .forms import CartAddProductForm, QuoteRequestForm, OrderForm, RegistrationForm
 from .cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
 
 
@@ -349,3 +350,19 @@ def order_success(request: HttpRequest, order_id: int) -> HttpResponse:
     """Display the thank-you page after a successful order."""
     order = get_object_or_404(Order, id=order_id)
     return render(request, 'catalog/order_success.html', {'order': order})
+
+
+# ===================== AUTH VIEWS =====================
+def register(request: HttpRequest) -> HttpResponse:
+    """Display and process the registration form; log the user in on success."""
+    if request.method == 'POST':
+        form = RegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            auth_login(request, user)
+            messages.success(request, 'Registrace proběhla úspěšně, jste přihlášeni.')
+            return redirect('catalog:product_list')
+    else:
+        form = RegistrationForm()
+
+    return render(request, 'catalog/register.html', {'form': form})

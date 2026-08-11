@@ -4,6 +4,27 @@
         <strong>Můj E-shop</strong>
     </a>
 
+     <div class="nav-account">
+        {% if user.is_authenticated %}
+            <span>Ahoj, {{ user.first_name|default:user.email }}</span>
+            <form action="{% url 'catalog:logout' %}" method="post" class="logout-form" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit"
+                        class="btn-logout"
+                        style="background: none;
+                        border: none;
+                        padding: 0;
+                        color: inherit;
+                        text-decoration: underline;
+                        cursor: pointer;
+                        font: inherit;">Odhlásit se</button>
+            </form>
+        {% else %}
+            <a href="{% url 'catalog:login' %}" class="btn-login">Přihlásit se</a>
+            <a href="{% url 'catalog:register' %}" class="btn-register">Registrace</a>
+        {% endif %}
+    </div>
+
     <div class="nav-cart">
         <a href="{% url 'catalog:cart_detail' %}" class="btn-cart">
             🛒 Košík

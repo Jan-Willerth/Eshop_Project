@@ -1,4 +1,5 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
 
 from . import views
 
@@ -18,6 +19,11 @@ urlpatterns = [
     path('checkout/', views.checkout, name='checkout'),
     path('checkout/summary/', views.checkout_summary, name='checkout_summary'),
     path('order/<int:order_id>/success/', views.order_success, name='order_success'),
+
+    # ===================== AUTH =====================
+    path('registrace/', views.register, name='register'),
+    path('prihlaseni/', auth_views.LoginView.as_view(template_name='catalog/login.html'), name='login'),
+    path('odhlaseni/', auth_views.LogoutView.as_view(), name='logout'),
 
     # ===================== QUOTE =====================
     path('quote/', views.custom_quote, name='custom_quote'),

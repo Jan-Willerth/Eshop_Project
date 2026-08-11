@@ -7,6 +7,8 @@
      <div class="nav-account">
         {% if user.is_authenticated %}
             <span>Ahoj, {{ user.first_name|default:user.email }}</span>
+            <a href="{% url 'catalog:profile_update' %}">Můj profil</a>
+            <a href="{% url 'catalog:order_history' %}">Moje objednávky</a>
             <form action="{% url 'catalog:logout' %}" method="post" class="logout-form" style="display: inline;">
                 {% csrf_token %}
                 <button type="submit"

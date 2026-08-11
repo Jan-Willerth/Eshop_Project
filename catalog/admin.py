@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     Category, Product, VatRate, ShippingMethod, PaymentMethod,
-    Order, OrderItem
+    CompanyBillingProfile, Order, OrderItem, Profile
 )
 
 
@@ -120,3 +120,15 @@ class OrderItemAdmin(admin.ModelAdmin):
     list_display = ('order', 'product', 'quantity', 'unit_price_net', 'unit_price_gross')
     list_filter = ('order__status',)
     search_fields = ('product__name', 'order__customer_email')
+
+
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'phone', 'city')
+    search_fields = ('user__email', 'user__first_name', 'user__last_name')
+
+
+@admin.register(CompanyBillingProfile)
+class CompanyBillingProfileAdmin(admin.ModelAdmin):
+    list_display = ('company_name', 'ico', 'profile')
+    search_fields = ('company_name', 'ico', 'profile__user__email')

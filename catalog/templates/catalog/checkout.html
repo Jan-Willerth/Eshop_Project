@@ -5,6 +5,10 @@
 {% block content %}
 <div class="checkout">
     <h1>Dokončení objednávky</h1>
+    <p>
+        U objednávek nad {{ payment_limit|floatformat:"-2" }} Kč je možná pouze platba předem:
+        Apple Pay, Google Pay, platba kartou nebo platba převodem.
+    </p>
 
     <form method="post">
         {% csrf_token %}
@@ -12,4 +16,61 @@
         <button type="submit">Odeslat objednávku</button>
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const companyInvoiceCheckbox = document.getElementById('id_billing_different');
+        const companyFields = [
+            'id_billing_first_name',
+            'id_billing_last_name',
+            'id_billing_company_name',
+            'id_billing_ico',
+            'id_billing_dic',
+            'id_billing_street',
+            'id_billing_city',
+            'id_billing_zip_code'
+        ];
+        const deliveryFields = [
+            'id_delivery_street',
+            'id_delivery_city',
+            'id_delivery_zip_code'
+        ];
+        const billingAddressIsDeliveryCheckbox = document.getElementById('id_billing_address_is_delivery');
+        const differentDeliveryCheckbox = document.getElementById('id_delivery_different');
+
+        function toggleAddressFields() {
+            companyFields.forEach(function (fieldId) {
+                const field = document.getElementById(fieldId);
+                if (field) field.closest('p').hidden = !companyInvoiceCheckbox.checked;
+            });
+
+            if (billingAddressIsDeliveryCheckbox) {
+                billingAddressIsDeliveryCheckbox.closest('p').hidden = !companyInvoiceCheckbox.checked;
+                if (!companyInvoiceCheckbox.checked) billingAddressIsDeliveryCheckbox.checked = false;
+            }
+
+            deliveryFields.forEach(function (fieldId) {
+                const field = document.getElementById(fieldId);
+                if (field) field.closest('p').hidden = !differentDeliveryCheckbox.checked;
+            });
+
+            if (differentDeliveryCheckbox.checked) {
+                billingAddressIsDeliveryCheckbox.checked = false;
+                billingAddressIsDeliveryCheckbox.disabled = true;
+            } else if (billingAddressIsDeliveryCheckbox.checked) {
+                differentDeliveryCheckbox.disabled = true;
+            } else {
+                billingAddressIsDeliveryCheckbox.disabled = !companyInvoiceCheckbox.checked;
+                differentDeliveryCheckbox.disabled = false;
+            }
+        }
+
+        if (companyInvoiceCheckbox) {
+            companyInvoiceCheckbox.addEventListener('change', toggleAddressFields);
+            billingAddressIsDeliveryCheckbox.addEventListener('change', toggleAddressFields);
+            differentDeliveryCheckbox.addEventListener('change', toggleAddressFields);
+            toggleAddressFields();
+        }
+    });
+</script>
 {% endblock %}

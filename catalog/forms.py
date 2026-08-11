@@ -1,8 +1,10 @@
 import re
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import QuoteRequest, ShippingMethod, PaymentMethod, Profile
+from .models import CompanyBillingProfile, QuoteRequest, ShippingMethod, PaymentMethod, Profile
 
 
 # ===================== CHOICE FIELDS =====================
@@ -123,69 +125,101 @@ class QuoteRequestForm(forms.ModelForm):
 
 # ===================== ORDER FORM =====================
 class OrderForm(forms.Form):
-    """Validate checkout data, requiring billing details only when billing_different is checked."""
+    """Validate checkout, delivery-address choice, and payment limits."""
 
     customer_email = forms.EmailField(label='E-mail')
     customer_phone = forms.CharField(max_length=50, label='Telefon')
+    shipping_first_name = forms.CharField(max_length=100, required=False, label='Jméno')
+    shipping_last_name = forms.CharField(max_length=100, required=False, label='Příjmení')
+    shipping_street = forms.CharField(max_length=255, required=False, label='Ulice a číslo popisné')
+    shipping_city = forms.CharField(max_length=100, required=False, label='Město')
+    shipping_zip_code = forms.CharField(max_length=20, required=False, label='PSČ')
+    shipping_method = ShippingMethodChoiceField(queryset=ShippingMethod.objects.filter(is_active=True), label='Způsob dopravy')
+    payment_method = PaymentMethodChoiceField(queryset=PaymentMethod.objects.filter(is_active=True), label='Způsob platby')
 
-    shipping_first_name = forms.CharField(max_length=100, label='Jméno')
-    shipping_last_name = forms.CharField(max_length=100, label='Příjmení')
-    shipping_street = forms.CharField(max_length=255, label='Ulice a číslo popisné')
-    shipping_city = forms.CharField(max_length=100, label='Město')
-    shipping_zip_code = forms.CharField(max_length=20, label='PSČ')
-
-    shipping_method = ShippingMethodChoiceField(queryset=ShippingMethod.objects.filter(is_active=True),
-                                                label='Způsob dopravy')
-    payment_method = PaymentMethodChoiceField(queryset=PaymentMethod.objects.filter(is_active=True),
-                                              label='Způsob platby')
-
-    billing_different = forms.BooleanField(required=False, label="Chci fakturu na firmu")
+    billing_different = forms.BooleanField(required=False, label='Chci fakturu na firmu')
     billing_first_name = forms.CharField(max_length=100, required=False, label='Jméno (kontaktní osoba)')
     billing_last_name = forms.CharField(max_length=100, required=False, label='Příjmení (kontaktní osoba)')
     billing_company_name = forms.CharField(max_length=150, required=False, label='Název firmy')
-    billing_ico = forms.CharField(
-        max_length=20,
-        required=False,
-        label='IČO',
-        widget=forms.TextInput(
-            attrs={'pattern': r'\d{8}', 'maxlength': '8', 'title': 'IČO musí obsahovat přesně 8 číslic.'})
-    )
+    billing_ico = forms.CharField(max_length=20, required=False, label='IČO')
     billing_dic = forms.CharField(max_length=20, required=False, label='DIČ')
     billing_street = forms.CharField(max_length=255, required=False, label='Ulice a číslo popisné (fakturační)')
     billing_city = forms.CharField(max_length=100, required=False, label='Město (fakturační)')
     billing_zip_code = forms.CharField(max_length=20, required=False, label='PSČ (fakturační)')
+    billing_address_is_delivery = forms.BooleanField(
+        required=False,
+        label='Fakturační adresa je stejná jako doručovací',
+    )
+    delivery_different = forms.BooleanField(required=False, label='Jiná dodací adresa')
+    delivery_street = forms.CharField(max_length=255, required=False, label='Ulice a číslo popisné (dodací)')
+    delivery_city = forms.CharField(max_length=100, required=False, label='Město (dodací)')
+    delivery_zip_code = forms.CharField(max_length=20, required=False, label='PSČ (dodací)')
+
+    def __init__(self, *args, products_total_gross=Decimal('0.00'), is_registered=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.products_total_gross = products_total_gross
+        self.is_registered = is_registered
 
     def clean_shipping_first_name(self) -> str:
-        """Capitalize the shipping first name."""
         return self.cleaned_data.get('shipping_first_name', '').strip().capitalize()
 
     def clean_shipping_last_name(self) -> str:
-        """Capitalize the shipping last name."""
         return self.cleaned_data.get('shipping_last_name', '').strip().capitalize()
 
     def clean(self):
-        """Require billing_company_name, billing_ico, and billing address when billing_different is checked."""
         cleaned_data = super().clean()
+        billing_different = cleaned_data.get('billing_different')
 
-        if cleaned_data.get('billing_different'):
-            required_billing_fields = [
-                'billing_company_name', 'billing_ico',
-                'billing_street', 'billing_city', 'billing_zip_code',
-            ]
-            for field_name in required_billing_fields:
+        if billing_different:
+            for field_name in ('billing_company_name', 'billing_ico', 'billing_street', 'billing_city', 'billing_zip_code'):
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
-
             billing_ico = cleaned_data.get('billing_ico')
             if billing_ico and not re.fullmatch(r'\d{8}', billing_ico):
                 self.add_error('billing_ico', 'IČO musí obsahovat přesně 8 číslic.')
+
+        billing_address_is_delivery = cleaned_data.get('billing_address_is_delivery')
+        delivery_different = cleaned_data.get('delivery_different')
+        cleaned_data['customer_street'] = cleaned_data.get('shipping_street')
+        cleaned_data['customer_city'] = cleaned_data.get('shipping_city')
+        cleaned_data['customer_zip_code'] = cleaned_data.get('shipping_zip_code')
+        if billing_address_is_delivery and delivery_different:
+            self.add_error('delivery_different', 'Zvolte pouze jednu dodací adresu.')
+
+        if billing_address_is_delivery and not billing_different:
+            self.add_error('billing_address_is_delivery', 'Tuto volbu lze použít pouze při faktuře na firmu.')
+
+        if delivery_different:
+            for field_name in ('delivery_street', 'delivery_city', 'delivery_zip_code'):
+                if not cleaned_data.get(field_name):
+                    self.add_error(field_name, 'Toto pole je povinné pro jinou dodací adresu.')
+            cleaned_data['shipping_street'] = cleaned_data.get('delivery_street')
+            cleaned_data['shipping_city'] = cleaned_data.get('delivery_city')
+            cleaned_data['shipping_zip_code'] = cleaned_data.get('delivery_zip_code')
+        elif billing_different and billing_address_is_delivery:
+            cleaned_data['shipping_street'] = cleaned_data.get('billing_street')
+            cleaned_data['shipping_city'] = cleaned_data.get('billing_city')
+            cleaned_data['shipping_zip_code'] = cleaned_data.get('billing_zip_code')
+
+        for field_name in ('shipping_first_name', 'shipping_last_name', 'shipping_street', 'shipping_city', 'shipping_zip_code'):
+            if not cleaned_data.get(field_name):
+                self.add_error(field_name, 'Toto pole je povinné pro doručení objednávky.')
+
+        shipping_method = cleaned_data.get('shipping_method')
+        payment_method = cleaned_data.get('payment_method')
+        if shipping_method and payment_method:
+            total_gross = self.products_total_gross + shipping_method.price_gross + payment_method.price_gross
+            payment_limit = Decimal('5000.00') if self.is_registered else Decimal('1000.00')
+            advance_payment_names = ('apple pay', 'google pay', 'platba kartou', 'platba převodem')
+            if total_gross > payment_limit and not any(name in payment_method.name.lower() for name in advance_payment_names):
+                self.add_error('payment_method', f'Objednávky nad {payment_limit:.0f} Kč lze uhradit pouze platbou předem.')
 
         return cleaned_data
 
 
 # ===================== REGISTRATION FORM =====================
 class RegistrationForm(UserCreationForm):
-    """Registration form based on Django's UserCreationForm, using email as the username, with contact/address."""
+    """Registration form with optional company billing details."""
 
     email = forms.EmailField(required=True, label='E-mail')
     password1 = forms.CharField(
@@ -228,6 +262,21 @@ class RegistrationForm(UserCreationForm):
         })
     )
 
+    billing_different = forms.BooleanField(required=False, label="Chci fakturu na firmu")
+    billing_first_name = forms.CharField(max_length=100, required=False, label='Jméno (kontaktní osoba)')
+    billing_last_name = forms.CharField(max_length=100, required=False, label='Příjmení (kontaktní osoba)')
+    billing_company_name = forms.CharField(max_length=150, required=False, label='Název firmy')
+    billing_ico = forms.CharField(
+        max_length=20,
+        required=False,
+        label='IČO',
+        widget=forms.TextInput(attrs={'pattern': r'\d{8}', 'maxlength': '8'}),
+    )
+    billing_dic = forms.CharField(max_length=20, required=False, label='DIČ')
+    billing_street = forms.CharField(max_length=255, required=False, label='Ulice a číslo popisné (fakturační)')
+    billing_city = forms.CharField(max_length=100, required=False, label='Město (fakturační)')
+    billing_zip_code = forms.CharField(max_length=20, required=False, label='PSČ (fakturační)')
+
     class Meta:
         model = User
         fields = ['email', 'first_name', 'last_name', 'password1', 'password2']
@@ -250,6 +299,19 @@ class RegistrationForm(UserCreationForm):
             )
         return password2
 
+    def clean(self):
+        """Require the same company invoice data as checkout when B2B is selected."""
+        cleaned_data = super().clean()
+        if cleaned_data.get('billing_different'):
+            for field_name in ('billing_company_name', 'billing_ico', 'billing_street', 'billing_city', 'billing_zip_code'):
+                if not cleaned_data.get(field_name):
+                    self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
+
+            billing_ico = cleaned_data.get('billing_ico')
+            if billing_ico and not re.fullmatch(r'\d{8}', billing_ico):
+                self.add_error('billing_ico', 'IČO musí obsahovat přesně 8 číslic.')
+        return cleaned_data
+
     def save(self, commit=True):
         """Create the User with email as username, plus a linked Profile with contact/address data."""
         user = super().save(commit=False)
@@ -266,4 +328,49 @@ class RegistrationForm(UserCreationForm):
                 city=self.cleaned_data['city'],
                 zip_code=self.cleaned_data['zip_code'],
             )
+            if self.cleaned_data['billing_different']:
+                CompanyBillingProfile.objects.create(
+                    profile=user.profile,
+                    contact_first_name=self.cleaned_data['billing_first_name'],
+                    contact_last_name=self.cleaned_data['billing_last_name'],
+                    company_name=self.cleaned_data['billing_company_name'],
+                    ico=self.cleaned_data['billing_ico'],
+                    dic=self.cleaned_data['billing_dic'],
+                    street=self.cleaned_data['billing_street'],
+                    city=self.cleaned_data['billing_city'],
+                    zip_code=self.cleaned_data['billing_zip_code'],
+                )
         return user
+
+
+# ===================== PROFILE FORM =====================
+class ProfileUpdateForm(forms.Form):
+    """Update a customer's contact, delivery, and optional company billing data."""
+
+    first_name = forms.CharField(max_length=100, label='Jméno')
+    last_name = forms.CharField(max_length=100, label='Příjmení')
+    phone = forms.CharField(max_length=50, label='Telefon')
+    street = forms.CharField(max_length=255, label='Ulice a číslo popisné')
+    city = forms.CharField(max_length=100, label='Město')
+    zip_code = forms.CharField(max_length=20, label='PSČ')
+
+    billing_different = forms.BooleanField(required=False, label='Chci fakturu na firmu')
+    billing_first_name = forms.CharField(max_length=100, required=False, label='Jméno (kontaktní osoba)')
+    billing_last_name = forms.CharField(max_length=100, required=False, label='Příjmení (kontaktní osoba)')
+    billing_company_name = forms.CharField(max_length=150, required=False, label='Název firmy')
+    billing_ico = forms.CharField(max_length=20, required=False, label='IČO')
+    billing_dic = forms.CharField(max_length=20, required=False, label='DIČ')
+    billing_street = forms.CharField(max_length=255, required=False, label='Ulice a číslo popisné (fakturační)')
+    billing_city = forms.CharField(max_length=100, required=False, label='Město (fakturační)')
+    billing_zip_code = forms.CharField(max_length=20, required=False, label='PSČ (fakturační)')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('billing_different'):
+            for field_name in ('billing_company_name', 'billing_ico', 'billing_street', 'billing_city', 'billing_zip_code'):
+                if not cleaned_data.get(field_name):
+                    self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
+            billing_ico = cleaned_data.get('billing_ico')
+            if billing_ico and not re.fullmatch(r'\d{8}', billing_ico):
+                self.add_error('billing_ico', 'IČO musí obsahovat přesně 8 číslic.')
+        return cleaned_data

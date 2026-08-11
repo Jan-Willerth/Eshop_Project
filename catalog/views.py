@@ -8,9 +8,13 @@ from django.contrib.auth.decorators import login_required
 from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.db import transaction
+from django.db.models import F
 
-from .models import Category, Product, ShippingMethod, PaymentMethod, OrderStatus, Order, OrderItem
-from .forms import CartAddProductForm, QuoteRequestForm, OrderForm, RegistrationForm
+from .models import (
+    Category, CompanyBillingProfile, Product, Profile, ShippingMethod, PaymentMethod,
+    OrderStatus, Order, OrderItem, generate_invoice_pdf,
+)
+from .forms import CartAddProductForm, ProfileUpdateForm, QuoteRequestForm, OrderForm, RegistrationForm
 from .cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
 
 
@@ -223,6 +227,11 @@ def cart_detail(request: HttpRequest) -> HttpResponse:
 def checkout(request: HttpRequest) -> HttpResponse:
     """Display and validate the checkout form."""
     cart = request.session.get('cart', {})
+    _, _, _, products_total_gross = calculate_cart_totals(cart)
+    form_context = {
+        'products_total_gross': products_total_gross,
+        'is_registered': request.user.is_authenticated,
+    }
 
     if cart_has_unconfirmed_overstock(cart):
         messages.error(
@@ -233,7 +242,7 @@ def checkout(request: HttpRequest) -> HttpResponse:
         return redirect('catalog:cart_detail')
 
     if request.method == 'POST':
-        form = OrderForm(request.POST)
+        form = OrderForm(request.POST, **form_context)
         if form.is_valid():
             cd = form.cleaned_data
             request.session['pending_order'] = {
@@ -244,6 +253,9 @@ def checkout(request: HttpRequest) -> HttpResponse:
                 'shipping_street': cd['shipping_street'],
                 'shipping_city': cd['shipping_city'],
                 'shipping_zip_code': cd['shipping_zip_code'],
+                'customer_street': cd['customer_street'],
+                'customer_city': cd['customer_city'],
+                'customer_zip_code': cd['customer_zip_code'],
                 'shipping_method_id': cd['shipping_method'].id,
                 'payment_method_id': cd['payment_method'].id,
                 'billing_different': cd['billing_different'],
@@ -255,13 +267,47 @@ def checkout(request: HttpRequest) -> HttpResponse:
                 'billing_street': cd['billing_street'],
                 'billing_city': cd['billing_city'],
                 'billing_zip_code': cd['billing_zip_code'],
+                'delivery_different': cd['delivery_different'],
+                'delivery_street': cd['delivery_street'],
+                'delivery_city': cd['delivery_city'],
+                'delivery_zip_code': cd['delivery_zip_code'],
             }
             request.session.modified = True
             return redirect('catalog:checkout_summary')
     else:
-        form = OrderForm()
+        initial = {}
+        if request.user.is_authenticated:
+            profile = getattr(request.user, 'profile', None)
+            if profile:
+                initial = {
+                    'customer_email': request.user.email,
+                    'customer_phone': profile.phone,
+                    'shipping_first_name': request.user.first_name,
+                    'shipping_last_name': request.user.last_name,
+                    'shipping_street': profile.street,
+                    'shipping_city': profile.city,
+                    'shipping_zip_code': profile.zip_code,
+                }
+                company_billing = getattr(profile, 'company_billing', None)
+                if company_billing:
+                    initial.update({
+                        'billing_different': True,
+                        'billing_first_name': company_billing.contact_first_name,
+                        'billing_last_name': company_billing.contact_last_name,
+                        'billing_company_name': company_billing.company_name,
+                        'billing_ico': company_billing.ico,
+                        'billing_dic': company_billing.dic,
+                        'billing_street': company_billing.street,
+                        'billing_city': company_billing.city,
+                        'billing_zip_code': company_billing.zip_code,
+                    })
+        form = OrderForm(initial=initial, **form_context)
 
-    return render(request, 'catalog/checkout.html', {'form': form})
+    payment_limit = Decimal('5000.00') if request.user.is_authenticated else Decimal('1000.00')
+    return render(request, 'catalog/checkout.html', {
+        'form': form,
+        'payment_limit': payment_limit,
+    })
 
 
 def checkout_summary(request: HttpRequest) -> HttpResponse:
@@ -327,9 +373,13 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
                     unit_price_gross=item['product'].price_gross,
                     vat_rate=item['product'].vat_rate.rate,
                 )
+                Product.objects.filter(pk=item['product'].pk).update(
+                    stock=F('stock') - item['quantity']
+                )
 
         request.session.pop('cart', None)
         request.session.pop('pending_order', None)
+        request.session['last_order_id'] = order.id
         request.session.modified = True
 
         messages.success(request, 'Objednávka byla úspěšně vytvořena!')
@@ -348,9 +398,51 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
 
 
 def order_success(request: HttpRequest, order_id: int) -> HttpResponse:
-    """Display the thank-you page after a successful order."""
-    order = get_object_or_404(Order, id=order_id)
+    """Display the thank-you page only to its owner or the just-completed anonymous checkout."""
+    if request.user.is_authenticated:
+        order = get_object_or_404(Order, id=order_id, user=request.user)
+    else:
+        if request.session.get('last_order_id') != order_id:
+            return redirect('catalog:login')
+        order = get_object_or_404(Order, id=order_id, user__isnull=True)
     return render(request, 'catalog/order_success.html', {'order': order})
+
+
+@login_required(login_url='catalog:login')
+def order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
+    """Show a complete order detail to its authenticated owner only."""
+    order = get_object_or_404(
+        Order.objects.select_related('status', 'shipping_method', 'payment_method').prefetch_related('items__product'),
+        id=order_id,
+        user=request.user,
+    )
+    order_items = [{
+        'item': item,
+        'total_net': item.unit_price_net * item.quantity,
+        'total_gross': item.unit_price_gross * item.quantity,
+    } for item in order.items.all()]
+    shipping_gross = order.shipping_price_net * (1 + order.shipping_vat_rate / Decimal('100'))
+
+    return render(request, 'catalog/order_detail.html', {
+        'order': order,
+        'order_items': order_items,
+        'shipping_gross': shipping_gross,
+    })
+
+
+@login_required(login_url='catalog:login')
+def order_invoice_download(request: HttpRequest, order_id: int) -> HttpResponse:
+    """Download a tax document PDF only for the authenticated order owner."""
+    order = get_object_or_404(
+        Order.objects.prefetch_related('items__product').select_related('shipping_method', 'payment_method'),
+        id=order_id,
+        user=request.user,
+    )
+    is_business = bool(order.billing_company_name)
+    filename_prefix = 'danovy_doklad' if is_business else 'zjednoduseny_danovy_doklad'
+    response = HttpResponse(generate_invoice_pdf(order), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename_prefix}_{order.id}.pdf"'
+    return response
 
 
 # ===================== AUTH VIEWS =====================
@@ -367,6 +459,72 @@ def register(request: HttpRequest) -> HttpResponse:
         form = RegistrationForm()
 
     return render(request, 'catalog/register.html', {'form': form})
+
+
+@login_required(login_url='catalog:login')
+def profile_update(request: HttpRequest) -> HttpResponse:
+    """Allow a signed-in customer to maintain their saved checkout details."""
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    company_billing = getattr(profile, 'company_billing', None)
+
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            with transaction.atomic():
+                request.user.first_name = data['first_name']
+                request.user.last_name = data['last_name']
+                request.user.save(update_fields=['first_name', 'last_name'])
+
+                profile.phone = data['phone']
+                profile.street = data['street']
+                profile.city = data['city']
+                profile.zip_code = data['zip_code']
+                profile.save()
+
+                if data['billing_different']:
+                    CompanyBillingProfile.objects.update_or_create(
+                        profile=profile,
+                        defaults={
+                            'contact_first_name': data['billing_first_name'],
+                            'contact_last_name': data['billing_last_name'],
+                            'company_name': data['billing_company_name'],
+                            'ico': data['billing_ico'],
+                            'dic': data['billing_dic'],
+                            'street': data['billing_street'],
+                            'city': data['billing_city'],
+                            'zip_code': data['billing_zip_code'],
+                        },
+                    )
+                elif company_billing:
+                    company_billing.delete()
+
+            messages.success(request, 'Profil byl úspěšně aktualizován.')
+            return redirect('catalog:profile_update')
+    else:
+        initial = {
+            'first_name': request.user.first_name,
+            'last_name': request.user.last_name,
+            'phone': profile.phone,
+            'street': profile.street,
+            'city': profile.city,
+            'zip_code': profile.zip_code,
+        }
+        if company_billing:
+            initial.update({
+                'billing_different': True,
+                'billing_first_name': company_billing.contact_first_name,
+                'billing_last_name': company_billing.contact_last_name,
+                'billing_company_name': company_billing.company_name,
+                'billing_ico': company_billing.ico,
+                'billing_dic': company_billing.dic,
+                'billing_street': company_billing.street,
+                'billing_city': company_billing.city,
+                'billing_zip_code': company_billing.zip_code,
+            })
+        form = ProfileUpdateForm(initial=initial)
+
+    return render(request, 'catalog/profile_update.html', {'form': form})
 
 
 @login_required(login_url='catalog:login')

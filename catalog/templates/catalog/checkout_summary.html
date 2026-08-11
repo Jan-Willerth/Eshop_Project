@@ -39,10 +39,41 @@
         <p class="checkout-grand-total">Celkem k úhradě: <strong>{{ grand_total_gross|floatformat:"-2" }} Kč</strong></p>
     </div>
 
-    <h2>Doručovací a fakturační údaje</h2>
-    <p>{{ pending_order.shipping_first_name }} {{ pending_order.shipping_last_name }}</p>
-    <p>{{ pending_order.shipping_street }}, {{ pending_order.shipping_city }}, {{ pending_order.shipping_zip_code }}</p>
-    <p>{{ pending_order.customer_email }} / {{ pending_order.customer_phone }}</p>
+    <h2>Údaje zákazníka</h2>
+    <p><strong>E-mail:</strong> {{ pending_order.customer_email }}</p>
+    <p><strong>Telefon:</strong> {{ pending_order.customer_phone }}</p>
+    <p><strong>Jméno:</strong> {{ pending_order.shipping_first_name }}</p>
+    <p><strong>Příjmení:</strong> {{ pending_order.shipping_last_name }}</p>
+    <p><strong>Ulice a číslo popisné:</strong> {{ pending_order.customer_street|default:pending_order.shipping_street }}</p>
+    <p><strong>Město:</strong> {{ pending_order.customer_city|default:pending_order.shipping_city }}</p>
+    <p><strong>PSČ:</strong> {{ pending_order.customer_zip_code|default:pending_order.shipping_zip_code }}</p>
+
+    {% if pending_order.billing_different %}
+        <h2>Fakturační údaje</h2>
+        {% if pending_order.billing_first_name %}
+            <p><strong>Jméno kontaktní osoby:</strong> {{ pending_order.billing_first_name }}</p>
+        {% endif %}
+        {% if pending_order.billing_last_name %}
+            <p><strong>Příjmení kontaktní osoby:</strong> {{ pending_order.billing_last_name }}</p>
+        {% endif %}
+        <p><strong>Název firmy:</strong> {{ pending_order.billing_company_name }}</p>
+        <p><strong>IČO:</strong> {{ pending_order.billing_ico }}</p>
+        {% if pending_order.billing_dic %}
+            <p><strong>DIČ:</strong> {{ pending_order.billing_dic }}</p>
+        {% endif %}
+        <p><strong>Ulice a číslo popisné:</strong> {{ pending_order.billing_street }}</p>
+        <p><strong>Město:</strong> {{ pending_order.billing_city }}</p>
+        <p><strong>PSČ:</strong> {{ pending_order.billing_zip_code }}</p>
+    {% endif %}
+
+    {% if pending_order.delivery_different %}
+        <h2>Dodací údaje</h2>
+        <p><strong>Jméno:</strong> {{ pending_order.shipping_first_name }}</p>
+        <p><strong>Příjmení:</strong> {{ pending_order.shipping_last_name }}</p>
+        <p><strong>Ulice a číslo popisné:</strong> {{ pending_order.delivery_street }}</p>
+        <p><strong>Město:</strong> {{ pending_order.delivery_city }}</p>
+        <p><strong>PSČ:</strong> {{ pending_order.delivery_zip_code }}</p>
+    {% endif %}
 
     <form method="post" id="confirm-order-form">
         {% csrf_token %}

@@ -278,6 +278,23 @@ class Profile(models.Model):
         return f"<Profile(id={self.id}, user_id={self.user_id})>"
 
 
+class CompanyBillingProfile(models.Model):
+    """Optional company billing details saved for a customer's profile."""
+
+    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='company_billing')
+    contact_first_name = models.CharField(max_length=100, blank=True)
+    contact_last_name = models.CharField(max_length=100, blank=True)
+    company_name = models.CharField(max_length=150)
+    ico = models.CharField(max_length=20)
+    dic = models.CharField(max_length=20, blank=True)
+    street = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    zip_code = models.CharField(max_length=20)
+
+    def __str__(self) -> str:
+        return self.company_name
+
+
 # ===================== SIGNALS =====================
 def generate_invoice_pdf(order):
     """Generate a tax document PDF for an order (full for business, simplified for consumers)."""

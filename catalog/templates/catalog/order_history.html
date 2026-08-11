@@ -14,15 +14,17 @@
                     <th scope="col">Datum</th>
                     <th scope="col">Stav</th>
                     <th scope="col">Celkem</th>
+                    <th scope="col">Akce</th>
                 </tr>
             </thead>
             <tbody>
                 {% for order in orders %}
                     <tr>
-                        <td>{{ order.id }}</td>
+                        <td><a href="{% url 'catalog:order_detail' order.id %}">#{{ order.id }}</a></td>
                         <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
                         <td>{{ order.status.name }}</td>
                         <td>{{ order.total_price_gross|floatformat:"-2" }} Kč</td>
+                        <td><a href="{% url 'catalog:order_detail' order.id %}">Detail</a></td>
                     </tr>
                 {% endfor %}
             </tbody>

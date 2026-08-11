@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.core import mail
 from django.contrib.auth.models import User
 
-from catalog.models import Category, Product, VatRate, ShippingMethod, PaymentMethod, OrderStatus, Order
+from catalog.models import CompanyBillingProfile, Category, Product, Profile, VatRate, ShippingMethod, PaymentMethod, OrderStatus, Order
 
 
 # ===================== CART TESTS =====================
@@ -658,6 +658,9 @@ class OrderViewTestCase(TestCase):
         )
         self.assertEqual(order.total_price_gross, expected_total)
 
+        self.limited_product.refresh_from_db()
+        self.assertEqual(self.limited_product.stock, 3)
+
         self.assertNotIn('cart', self.client.session)
         self.assertNotIn('pending_order', self.client.session)
 
@@ -937,6 +940,89 @@ class RegistrationFormTestCase(TestCase):
         self.assertEqual(user.profile.street, 'Hlavní 1')
         self.assertEqual(user.profile.city, 'Praha')
         self.assertEqual(user.profile.zip_code, '11000')
+
+    def test_registration_with_company_invoice_saves_billing_profile(self):
+        """B2B registration stores optional company data linked to the user profile."""
+        form = RegistrationForm(data={
+            **self.valid_data,
+            'billing_different': True,
+            'billing_first_name': 'Jan',
+            'billing_last_name': 'Novák',
+            'billing_company_name': 'Example s.r.o.',
+            'billing_ico': '12345678',
+            'billing_dic': 'CZ12345678',
+            'billing_street': 'Fakturační 2',
+            'billing_city': 'Brno',
+            'billing_zip_code': '60200',
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_anonymous_order_above_limit_requires_advance_payment(self):
+        cash_on_delivery = PaymentMethod.objects.create(
+            name='Dobírka', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True,
+        )
+        form = OrderForm(
+            data={**self.base_data, 'payment_method': cash_on_delivery.id},
+            products_total_gross=Decimal('1001.00'),
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('payment_method', form.errors)
+
+    def test_registered_order_above_limit_requires_advance_payment(self):
+        cash_on_delivery = PaymentMethod.objects.create(
+            name='Dobírka', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True,
+        )
+        form = OrderForm(
+            data={**self.base_data, 'payment_method': cash_on_delivery.id},
+            products_total_gross=Decimal('5001.00'),
+            is_registered=True,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('payment_method', form.errors)
+
+        user = form.save()
+        billing_profile = CompanyBillingProfile.objects.get(profile=user.profile)
+
+        self.assertEqual(billing_profile.company_name, 'Example s.r.o.')
+        self.assertEqual(billing_profile.ico, '12345678')
+        self.assertEqual(billing_profile.city, 'Brno')
+
+
+class ProfileUpdateViewTestCase(TestCase):
+    """Test suite for customer profile updates."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='profil@example.com', email='profil@example.com', password='SilneHeslo123',
+        )
+        Profile.objects.create(
+            user=self.user, phone='732123456', street='Hlavní 1', city='Praha', zip_code='11000',
+        )
+
+    def test_profile_update_creates_company_billing_profile(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('catalog:profile_update'), {
+            'first_name': 'Jan',
+            'last_name': 'Novák',
+            'phone': '732123456',
+            'street': 'Hlavní 1',
+            'city': 'Praha',
+            'zip_code': '11000',
+            'billing_different': 'on',
+            'billing_first_name': 'Jan',
+            'billing_last_name': 'Novák',
+            'billing_company_name': 'Example s.r.o.',
+            'billing_ico': '12345678',
+            'billing_dic': 'CZ12345678',
+            'billing_street': 'Fakturační 2',
+            'billing_city': 'Brno',
+            'billing_zip_code': '60200',
+        })
+
+        self.assertRedirects(response, reverse('catalog:profile_update'))
+        self.assertEqual(self.user.profile.company_billing.company_name, 'Example s.r.o.')
 
 
 # ===================== ORDER HISTORY TESTS =====================

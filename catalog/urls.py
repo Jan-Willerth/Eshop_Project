@@ -19,11 +19,14 @@ urlpatterns = [
     path('checkout/', views.checkout, name='checkout'),
     path('checkout/summary/', views.checkout_summary, name='checkout_summary'),
     path('order/<int:order_id>/success/', views.order_success, name='order_success'),
+    path('order/<int:order_id>/', views.order_detail, name='order_detail'),
+    path('order/<int:order_id>/invoice/', views.order_invoice_download, name='order_invoice_download'),
 
     # ===================== AUTH =====================
     path('registrace/', views.register, name='register'),
     path('prihlaseni/', auth_views.LoginView.as_view(template_name='catalog/login.html'), name='login'),
     path('odhlaseni/', auth_views.LogoutView.as_view(), name='logout'),
+    path('muj-profil/', views.profile_update, name='profile_update'),
     path('moje-objednavky/', views.order_history, name='order_history'),
 
     # ===================== QUOTE =====================

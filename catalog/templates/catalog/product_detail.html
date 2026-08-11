@@ -16,6 +16,15 @@
 
     <h1 class="product-title">{{ product.name }}</h1>
 
+     {# ---------- IMAGE ---------- #}
+    <div class="product-image-wrapper">
+        {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-detail-image">
+        {% else %}
+            <img src="https://placehold.co/500x500?text=Bez+obr%C3%A1zku" alt="{{ product.name }} – obrázek není k dispozici" class="product-detail-image">
+        {% endif %}
+    </div>
+
     {# ---------- PRICING & STOCK ---------- #}
     <div class="product-pricing">
         <div class="price-gross">

@@ -9,6 +9,14 @@
     <div class="product-grid">
         {% for product in products %}
             <article class="product-card">
+
+                {# ---------- TITLE ---------- #}
+                <h2 class="product-title">
+                    <a href="{% url 'catalog:product_detail' slug=product.slug %}">
+                        {{ product.name }}
+                    </a>
+                </h2>
+
                 {# ---------- BREADCRUMB ---------- #}
                 <nav aria-label="Kategorie produktu" class="product-category">
                     <small>
@@ -20,32 +28,22 @@
                     </small>
                 </nav>
 
-                {# ---------- TITLE ---------- #}
-                <h2 class="product-title">
-                    <a href="{% url 'catalog:product_detail' slug=product.slug %}">
-                        {{ product.name }}
-                    </a>
-                </h2>
-
                 {# ---------- PRICE ---------- #}
                 <div class="product-pricing">
                     <strong class="price-gross">
-                        {{ product.price_gross|floatformat:"-2" }} Kč
+                        {{ product.price_gross|floatformat:"-2" }} Kč s DPH
                     </strong>
+
                     {% if product.price_net != product.price_gross %}
+                        <br>
                         <small class="price-net">
-                            (bez DPH: {{ product.price_net|floatformat:"-2" }} Kč)
+                            {{ product.price_net|floatformat:"-2" }} Kč bez DPH
                         </small>
                     {% endif %}
                 </div>
 
                 {# ---------- ACTIONS ---------- #}
-                <div class="product-actions">
-                    <a href="{% url 'catalog:product_detail' slug=product.slug %}"
-                       class="btn-detail">
-                        Detail
-                    </a>
-
+                <div>
                     <form action="{% url 'catalog:add_to_cart' product.id %}"
                           method="post"
                           class="add-to-cart-form">

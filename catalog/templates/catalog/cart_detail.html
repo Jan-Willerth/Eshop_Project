@@ -13,8 +13,11 @@
                 <tr>
                     <th scope="col">Produkt</th>
                     <th scope="col">Počet</th>
-                    <th scope="col">Cena za kus</th>
-                    <th scope="col">Celkem</th>
+                    <th scope="col">Cena za kus bez DPH</th>
+                    <th scope="col">DPH</th>
+                    <th scope="col">Cena za kus s DPH</th>
+                    <th scope="col">Celkem bez DPH</th>
+                    <th scope="col">Celkem s DPH</th>
                     <th scope="col"><span class="sr-only">Akce</span></th>
                 </tr>
             </thead>
@@ -65,18 +68,15 @@
                             </form>
                         </td>
 
-                        <td class="cart-item-unit-price">
-                            {{ item.product.price_gross|floatformat:"-2" }} Kč
-                        </td>
+                        <td>{{ item.product.price_net|floatformat:"-2" }} Kč</td>
 
-                        <td class="cart-item-price">
-                            <strong>{{ item.subtotal_gross|floatformat:"-2" }} Kč</strong>
-                            {% if item.subtotal_net != item.subtotal_gross %}
-                                <br><small class="price-net">
-                                    bez DPH: {{ item.subtotal_net|floatformat:"-2" }} Kč
-                                </small>
-                            {% endif %}
-                        </td>
+                        <td>{{ item.product.vat_rate.rate|floatformat:"-2" }} %</td>
+
+                        <td>{{ item.product.price_gross|floatformat:"-2" }} Kč</td>
+
+                        <td>{{ item.subtotal_net|floatformat:"-2" }} Kč</td>
+
+                        <td><strong>{{ item.subtotal_gross|floatformat:"-2" }} Kč</strong></td>
 
                         <td class="cart-item-actions">
                             <form action="{% url 'catalog:cart_remove' product_id=item.product.id %}"

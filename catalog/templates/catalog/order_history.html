@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Moje objednávky | E-shop{% endblock %}
+
+{% block content %}
+<div class="order-history">
+    <h1>Moje objednávky</h1>
+
+    {% if orders %}
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th scope="col">Číslo</th>
+                    <th scope="col">Datum</th>
+                    <th scope="col">Stav</th>
+                    <th scope="col">Celkem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                    <tr>
+                        <td>{{ order.id }}</td>
+                        <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
+                        <td>{{ order.status.name }}</td>
+                        <td>{{ order.total_price_gross|floatformat:"-2" }} Kč</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Zatím nemáte žádné objednávky.</p>
+    {% endif %}
+</div>
+{% endblock %}

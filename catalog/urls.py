@@ -24,6 +24,7 @@ urlpatterns = [
     path('registrace/', views.register, name='register'),
     path('prihlaseni/', auth_views.LoginView.as_view(template_name='catalog/login.html'), name='login'),
     path('odhlaseni/', auth_views.LogoutView.as_view(), name='logout'),
+    path('moje-objednavky/', views.order_history, name='order_history'),
 
     # ===================== QUOTE =====================
     path('quote/', views.custom_quote, name='custom_quote'),

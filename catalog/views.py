@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth import login as auth_login
+from django.contrib.auth.decorators import login_required
 from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.db import transaction
@@ -289,7 +290,7 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
 
         with transaction.atomic():
             order = Order.objects.create(
-                user=None,
+                user=request.user if request.user.is_authenticated else None,
                 status=order_status,
                 shipping_method=shipping,
                 payment_method=payment,
@@ -366,3 +367,10 @@ def register(request: HttpRequest) -> HttpResponse:
         form = RegistrationForm()
 
     return render(request, 'catalog/register.html', {'form': form})
+
+
+@login_required(login_url='catalog:login')
+def order_history(request: HttpRequest) -> HttpResponse:
+    """Display the logged-in user's own order history."""
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'catalog/order_history.html', {'orders': orders})

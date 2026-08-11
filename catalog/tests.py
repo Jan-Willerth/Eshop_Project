@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.core import mail
+from django.contrib.auth.models import User
 
 from catalog.models import Category, Product, VatRate, ShippingMethod, PaymentMethod, OrderStatus, Order
 
@@ -46,6 +47,7 @@ class CartViewsTestCase(TestCase):
             stock=10,
             is_active=True
         )
+
 
     # ===================== BASIC CART OPERATIONS =====================
     def test_add_to_cart_successful(self):
@@ -489,6 +491,13 @@ class OrderViewTestCase(TestCase):
         )
         self.order_status = OrderStatus.objects.create(code='new', name='Nová')
 
+        self.test_user = User.objects.create_user(
+            username='zakaznik@example.com',
+            email='zakaznik@example.com',
+            password='SilneHeslo123',
+        )
+
+
     def test_checkout_get_renders_form(self):
         """GET request renders the checkout page with an OrderForm instance."""
         url = reverse('catalog:checkout')
@@ -634,7 +643,8 @@ class OrderViewTestCase(TestCase):
         url = reverse('catalog:checkout_summary')
         response = self.client.post(url)
 
-        self.assertRedirects(response, reverse('catalog:order_success', kwargs={'order_id': 1}))
+        order = Order.objects.first()
+        self.assertRedirects(response, reverse('catalog:order_success', kwargs={'order_id': order.id}))
 
         self.assertEqual(Order.objects.count(), 1)
         order = Order.objects.first()
@@ -774,6 +784,76 @@ class OrderViewTestCase(TestCase):
 
         self.assertRedirects(response, reverse('catalog:checkout'))
 
+    def test_checkout_summary_post_associates_order_with_logged_in_user(self):
+        """POST while logged in sets order.user to the current user."""
+        self.client.login(username='zakaznik@example.com', password='SilneHeslo123')
+
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 1, 'overstock_confirmed': False}
+        }
+        session['pending_order'] = {
+            'customer_email': 'zakaznik@example.com',
+            'customer_phone': '+420123456789',
+            'shipping_first_name': 'Jan',
+            'shipping_last_name': 'Novák',
+            'shipping_street': 'Hlavní 1',
+            'shipping_city': 'Praha',
+            'shipping_zip_code': '11000',
+            'shipping_method_id': self.shipping_method.id,
+            'payment_method_id': self.payment_method.id,
+            'billing_different': False,
+            'billing_first_name': '',
+            'billing_last_name': '',
+            'billing_company_name': '',
+            'billing_ico': '',
+            'billing_dic': '',
+            'billing_street': '',
+            'billing_city': '',
+            'billing_zip_code': '',
+        }
+        session.save()
+
+        url = reverse('catalog:checkout_summary')
+        self.client.post(url)
+
+        order = Order.objects.first()
+        self.assertEqual(order.user, self.test_user)
+
+    def test_checkout_summary_post_anonymous_order_has_no_user(self):
+        """POST while anonymous leaves order.user as None."""
+        session = self.client.session
+        session['cart'] = {
+            str(self.limited_product.id): {'quantity': 1, 'overstock_confirmed': False}
+        }
+        session['pending_order'] = {
+            'customer_email': 'anonym@example.com',
+            'customer_phone': '+420123456789',
+            'shipping_first_name': 'Jan',
+            'shipping_last_name': 'Novák',
+            'shipping_street': 'Hlavní 1',
+            'shipping_city': 'Praha',
+            'shipping_zip_code': '11000',
+            'shipping_method_id': self.shipping_method.id,
+            'payment_method_id': self.payment_method.id,
+            'billing_different': False,
+            'billing_first_name': '',
+            'billing_last_name': '',
+            'billing_company_name': '',
+            'billing_ico': '',
+            'billing_dic': '',
+            'billing_street': '',
+            'billing_city': '',
+            'billing_zip_code': '',
+        }
+        session.save()
+
+        url = reverse('catalog:checkout_summary')
+        self.client.post(url)
+
+        order = Order.objects.first()
+        self.assertIsNone(order.user)
+
 
 # ===================== SHIPPING & PAYMENT MODEL TESTS =====================
 class ShippingPaymentModelTestCase(TestCase):
@@ -857,3 +937,66 @@ class RegistrationFormTestCase(TestCase):
         self.assertEqual(user.profile.street, 'Hlavní 1')
         self.assertEqual(user.profile.city, 'Praha')
         self.assertEqual(user.profile.zip_code, '11000')
+
+
+# ===================== ORDER HISTORY TESTS =====================
+class OrderHistoryTestCase(TestCase):
+    """Test suite for the 'Moje objednávky' order-history page (Blok 8)."""
+
+    def setUp(self):
+        self.vat_standard = VatRate.objects.create(label='21%', rate=Decimal('21.00'), is_active=True)
+        self.shipping_method = ShippingMethod.objects.create(
+            name='Balík do ruky', price_net=Decimal('99.00'), vat_rate=self.vat_standard, is_active=True
+        )
+        self.payment_method = PaymentMethod.objects.create(
+            name='Platba kartou', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True
+        )
+        self.order_status = OrderStatus.objects.create(code='new', name='Nová')
+
+        self.user_a = User.objects.create_user(username='alice@example.com', email='alice@example.com', password='SilneHeslo123')
+        self.user_b = User.objects.create_user(username='bob@example.com', email='bob@example.com', password='SilneHeslo123')
+
+        self.order_a = self._create_order(self.user_a, 'alice@example.com')
+        self.order_b = self._create_order(self.user_b, 'bob@example.com')
+
+    def _create_order(self, user, email):
+        return Order.objects.create(
+            user=user,
+            status=self.order_status,
+            shipping_method=self.shipping_method,
+            payment_method=self.payment_method,
+            shipping_price_net=self.shipping_method.price_net,
+            shipping_vat_rate=self.shipping_method.vat_rate.rate,
+            payment_price_net=self.payment_method.price_net,
+            payment_price_gross=self.payment_method.price_gross,
+            payment_vat_rate=self.payment_method.vat_rate.rate,
+            total_price_net=Decimal('500.00'),
+            total_price_gross=Decimal('605.00'),
+            customer_email=email,
+            customer_phone='+420123456789',
+            shipping_first_name='Jan',
+            shipping_last_name='Novák',
+            shipping_street='Hlavní 1',
+            shipping_city='Praha',
+            shipping_zip_code='11000',
+        )
+
+    def test_order_history_requires_login(self):
+        """Anonymous user is redirected to the login page."""
+        url = reverse('catalog:order_history')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('catalog:login'), response.url)
+
+    def test_order_history_shows_only_own_orders(self):
+        """Logged-in user sees only their own orders, not other users' orders."""
+        self.client.login(username='alice@example.com', password='SilneHeslo123')
+
+        url = reverse('catalog:order_history')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        orders = response.context['orders']
+        self.assertEqual(list(orders), [self.order_a])
+        self.assertNotIn(self.order_b, orders)

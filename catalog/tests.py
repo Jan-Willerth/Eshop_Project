@@ -4,7 +4,9 @@ from decimal import Decimal
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.core import mail
+from catalog.forms import OrderForm
 from django.contrib.auth.models import User
+from catalog.forms import RegistrationForm
 
 from catalog.models import CompanyBillingProfile, Category, Product, Profile, VatRate, ShippingMethod, PaymentMethod, OrderStatus, Order
 
@@ -337,9 +339,6 @@ class CartViewsTestCase(TestCase):
 
 
 # ===================== ORDER FORM TESTS =====================
-from catalog.forms import OrderForm
-
-
 class OrderFormTestCase(TestCase):
     """Test suite for the checkout OrderForm (Blok 6)."""
 
@@ -445,6 +444,33 @@ class OrderFormTestCase(TestCase):
         form = OrderForm(data=form_data)
 
         self.assertTrue(form.is_valid(), form.errors)
+
+    def test_anonymous_order_above_limit_requires_advance_payment(self):
+        """Anonymous order over 1000 Kč with cash-on-delivery is invalid."""
+        cash_on_delivery = PaymentMethod.objects.create(
+            name='Dobírka', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True,
+        )
+        form = OrderForm(
+            data={**self.base_data, 'payment_method': cash_on_delivery.id},
+            products_total_gross=Decimal('1001.00'),
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('payment_method', form.errors)
+
+    def test_registered_order_above_limit_requires_advance_payment(self):
+        """Registered-user order over 5000 Kč with cash-on-delivery is invalid."""
+        cash_on_delivery = PaymentMethod.objects.create(
+            name='Dobírka', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True,
+        )
+        form = OrderForm(
+            data={**self.base_data, 'payment_method': cash_on_delivery.id},
+            products_total_gross=Decimal('5001.00'),
+            is_registered=True,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('payment_method', form.errors)
 
 
 # ===================== ORDER VIEW TESTS =====================
@@ -891,10 +917,6 @@ class ShippingPaymentModelTestCase(TestCase):
 
 
 # ===================== REGISTRATION FORM TESTS =====================
-from django.contrib.auth.models import User
-from catalog.forms import RegistrationForm
-
-
 class RegistrationFormTestCase(TestCase):
     """Test suite for the RegistrationForm (Blok 8)."""
 
@@ -956,38 +978,6 @@ class RegistrationFormTestCase(TestCase):
             'billing_zip_code': '60200',
         })
         self.assertTrue(form.is_valid(), form.errors)
-
-    def test_anonymous_order_above_limit_requires_advance_payment(self):
-        cash_on_delivery = PaymentMethod.objects.create(
-            name='Dobírka', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True,
-        )
-        form = OrderForm(
-            data={**self.base_data, 'payment_method': cash_on_delivery.id},
-            products_total_gross=Decimal('1001.00'),
-        )
-
-        self.assertFalse(form.is_valid())
-        self.assertIn('payment_method', form.errors)
-
-    def test_registered_order_above_limit_requires_advance_payment(self):
-        cash_on_delivery = PaymentMethod.objects.create(
-            name='Dobírka', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True,
-        )
-        form = OrderForm(
-            data={**self.base_data, 'payment_method': cash_on_delivery.id},
-            products_total_gross=Decimal('5001.00'),
-            is_registered=True,
-        )
-
-        self.assertFalse(form.is_valid())
-        self.assertIn('payment_method', form.errors)
-
-        user = form.save()
-        billing_profile = CompanyBillingProfile.objects.get(profile=user.profile)
-
-        self.assertEqual(billing_profile.company_name, 'Example s.r.o.')
-        self.assertEqual(billing_profile.ico, '12345678')
-        self.assertEqual(billing_profile.city, 'Brno')
 
 
 class ProfileUpdateViewTestCase(TestCase):

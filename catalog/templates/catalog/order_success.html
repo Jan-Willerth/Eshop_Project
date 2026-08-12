@@ -6,5 +6,5 @@
 <p>Číslo vaší objednávky je <strong>#{{ order.id }}</strong>.</p>
 <p>Na e-mail {{ order.customer_email }} vám zašleme daňový doklad, případně fakturu s potvrzením objednávky.</p>
 <p>Celková částka: <strong>{{ order.total_price_gross|floatformat:"-2" }} Kč</strong></p>
-<a href="{% url 'catalog:product_list' %}">Pokračovat v nákupu</a>
+<a href="{% url 'catalog:product_list' %}" class="btn-primary">Pokračovat v nákupu</a>
 {% endblock %}

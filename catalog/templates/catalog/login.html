@@ -9,9 +9,9 @@
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Přihlásit se</button>
+        <button type="submit" class="btn-primary">Přihlásit se</button>
     </form>
 
-    <p><a href="{% url 'catalog:register' %}">Nemám účet – zaregistrovat se</a></p>
+    <p><a href="{% url 'catalog:register' %}" class="btn-primary">Nemám účet – zaregistrovat se</a></p>
 </div>
 {% endblock %}

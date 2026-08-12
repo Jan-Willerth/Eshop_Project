@@ -20,11 +20,11 @@
             <tbody>
                 {% for order in orders %}
                     <tr>
-                        <td><a href="{% url 'catalog:order_detail' order.id %}">#{{ order.id }}</a></td>
+                        <td><a href="{% url 'catalog:order_detail' order.id %}" class="btn-primary">#{{ order.id }}</a></td>
                         <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
                         <td>{{ order.status.name }}</td>
                         <td>{{ order.total_price_gross|floatformat:"-2" }} Kč</td>
-                        <td><a href="{% url 'catalog:order_detail' order.id %}">Detail</a></td>
+                        <td><a href="{% url 'catalog:order_detail' order.id %}" class="btn-primary">Detail</a></td>
                     </tr>
                 {% endfor %}
             </tbody>

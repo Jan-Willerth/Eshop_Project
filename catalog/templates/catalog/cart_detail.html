@@ -108,7 +108,7 @@
 
         {# ---------- NAVIGATION ---------- #}
         <div class="cart-actions">
-            <a href="{% url 'catalog:product_list' %}" class="btn-back">
+            <a href="{% url 'catalog:product_list' %}" class="btn-primary">
                 &larr; Zpět na katalog
             </a>
 
@@ -124,7 +124,7 @@
                     Potvrďte formulář s podmínkami nebo odstraňte položku z košíku.
                 </div>
             {% else %}
-                <a href="{% url 'catalog:checkout' %}" class="btn-checkout" id="btn-checkout">
+                <a href="{% url 'catalog:checkout' %}" class="btn-primary">
                     Pokračovat k objednávce &rarr;
                 </a>
             {% endif %}
@@ -134,7 +134,7 @@
         {# ---------- EMPTY CART ---------- #}
         <div class="cart-empty-message">
             <p>Košík je prázdný.</p>
-            <a href="{% url 'catalog:product_list' %}" class="btn-back">
+            <a href="{% url 'catalog:product_list' %}" class="btn-primary">
                 &larr; Zpět na katalog
             </a>
         </div>

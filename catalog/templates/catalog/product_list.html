@@ -15,7 +15,9 @@
                     {% if product.image %}
                         <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-image">
                     {% else %}
-                        <img src="https://placehold.co/300x300?text=Bez+obr%C3%A1zku" alt="{{ product.name }} – obrázek není k dispozici" class="product-image">
+                        <img src="https://placehold.co/300x300?text=Bez+obr%C3%A1zku"
+                             alt="{{ product.name }} – obrázek není k dispozici"
+                             class="product-image">
                     {% endif %}
                 </a>
 

@@ -1,11 +1,9 @@
-/* ==========================================
-   1. ZÁKLADNÍ NASTAVENÍ A ŠEDÝ DARK MODE
-   ================================---------- */
+/* ===================== 1. ZÁKLADNÍ NASTAVENÍ A TMAVÝ REŽIM ===================== */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #2b2b2b; /* Příjemné středně šedé pozadí namísto černé */
+    background-color: #2b2b2b;
     color: #e0e0e0;
     display: flex;
     flex-direction: column;
@@ -22,7 +20,7 @@ body {
 }
 
 .main-header, .main-footer {
-    background-color: #353535; /* O něco světlejší šedá pro lišty */
+    background-color: #353535;
     border-bottom: 1px solid #444444;
 }
 
@@ -70,9 +68,7 @@ body {
     background-color: #381d1d;
 }
 
-/* ==========================================
-   2. NAVIGACE (NAVBAR)
-   ================================---------- */
+/* ===================== 2. NAVIGACE (NAVBAR) ===================== */
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -148,15 +144,13 @@ body {
 }
 
 .nav-account .nav-logout-btn:hover {
-    background: linear-gradient(135deg, #343a40, #212529;);
+    background: linear-gradient(135deg, #343a40, #212529);
     border-color: #adb5bd;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     text-decoration: none;
 }
 
-/* ==========================================
-   3. KATALOG PRODUKTŮ (MŘÍŽKA A KARTY)
-   ================================---------- */
+/* ===================== 3. KATALOG PRODUKTŮ (MŘÍŽKA A KARTY) ===================== */
 .catalog-title {
     margin-bottom: 20px;
     color: #ffffff;
@@ -169,8 +163,8 @@ body {
 }
 
 .product-card {
-    background: linear-gradient(145deg, #383838, #303030); /* Jemný přechod šedých odstínů */
-    border: 1px solid #3b71ca; /* Modravé orámování */
+    background: linear-gradient(145deg, #383838, #303030);
+    border: 1px solid #3b71ca;
     border-radius: 8px;
     padding: 15px;
     display: flex;
@@ -239,9 +233,7 @@ body {
     font-size: 0.85rem;
 }
 
-/* ==========================================
-   4. DETAIL PRODUKTU A FORMULÁŘE
-   ================================---------- */
+/* ===================== 4. DETAIL PRODUKTU A FORMULÁŘE ===================== */
 .product-detail, .auth-form, .cart-summary {
     background: linear-gradient(145deg, #383838, #303030);
     padding: 30px;
@@ -291,9 +283,7 @@ body {
     color: #b0b0b0;
 }
 
-/* ==========================================
-   5. TABULKY (KOŠÍK, OBJEDNÁVKY)
-   ================================---------- */
+/* ===================== 5. TABULKY (KOŠÍK, OBJEDNÁVKY) ===================== */
 .cart-table {
     width: 100%;
     border-collapse: collapse;
@@ -335,7 +325,6 @@ body {
     font-size: 1.1rem;
 }
 
-
 .cart-table th:nth-child(2),
 .cart-table td:nth-child(2),
 .cart-table th:nth-child(4),
@@ -345,9 +334,7 @@ body {
     text-align: center;
 }
 
-/* ==========================================
-   6. TLAČÍTKA A VSTUPNÍ POLE
-   ================================---------- */
+/* ===================== 6. TLAČÍTKA A VSTUPNÍ POLE ===================== */
 .btn-primary, a.btn-primary {
     background: linear-gradient(135deg, #1c7ed6, #228be6);
     color: white;
@@ -481,4 +468,43 @@ body {
 .login-form button[type="submit"]:hover {
     background: linear-gradient(135deg, #1864ab, #1c7ed6);
     box-shadow: 0 4px 12px rgba(34, 139, 230, 0.5);
+}
+
+/* ===================== 7. OBSAH MODÁLNÍHO OKNA ===================== */
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #252525;
+    color: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #3b71ca;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 4px 25px rgba(0, 123, 255, 0.3);
+}
+
+.modal-content p {
+    color: #ffffff;
+}
+
+.modal-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+#btn-continue-shopping {
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+#btn-go-to-cart {
+    display: inline-block;
+    padding: 8px 16px;
+    text-decoration: none;
 }

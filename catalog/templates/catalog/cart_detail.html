@@ -124,7 +124,7 @@
                     Potvrďte formulář s podmínkami nebo odstraňte položku z košíku.
                 </div>
             {% else %}
-                <a href="{% url 'catalog:checkout' %}" class="btn-primary">
+                <a href="{% url 'catalog:checkout' %}" class="btn-primary" id="btn-checkout">
                     Pokračovat k objednávce &rarr;
                 </a>
             {% endif %}

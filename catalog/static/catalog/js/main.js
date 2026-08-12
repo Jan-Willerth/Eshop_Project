@@ -142,7 +142,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = form.closest('tr');
         const qtyInput = form.querySelector('input[name="quantity"]');
         const warningWrapper = row.querySelector('.overstock-warning-wrapper');
-        const checkbox = warningWrapper ? warningWrapper.querySelector('.overstock-checkbox') : null;
+        const checkbox: Element | null = warningWrapper
+            ? warningWrapper.querySelector('.overstock-checkbox')
+            : null;
         const stockValElem = warningWrapper ? warningWrapper.querySelector('.stock-val') : null;
         const qtySpan = warningWrapper ? warningWrapper.querySelector('.qty-val') : null;
         const submitBtn = form.querySelector('button[type="submit"]');
@@ -356,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ===================== CART DETAIL: BLOCK CHECKOUT ON UNCONFIRMED TYPED OVERSTOCK =====================
+// ===================== CART DETAIL: BLOCK CHECKOUT ON UNCONFIRMED TYPED OVERSTOCK =====================
     const checkoutLink = document.getElementById('btn-checkout');
     if (checkoutLink) {
         checkoutLink.addEventListener('click', function (e) {
@@ -371,10 +373,37 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (hasUnconfirmedTyped) {
                 e.preventDefault();
-                alert(
-                    'V košíku máte zboží, které překračuje naše skladové zásoby.\n' +
-                    'Potvrďte formulář s podmínkami nebo odstraňte položku z košíku.'
-                );
+
+                const modal = document.getElementById('cart-modal');
+                const productNameEl = document.getElementById('modal-product-name');
+                const standardActions = document.getElementById('modal-actions-standard');
+                const alertActions = document.getElementById('modal-actions-alert');
+
+                if (modal && productNameEl) {
+                    productNameEl.innerText = 'V košíku máte zboží, které překračuje naše skladové zásoby. ' +
+                        'Potvrďte formulář s podmínkami nebo odstraňte položku z košíku.';
+
+                    if (standardActions) standardActions.style.display = 'none';
+                    if (alertActions) alertActions.style.display = 'block';
+
+                    modal.style.display = 'block';
+                }
+            }
+        });
+    }
+
+    const modalOkBtn = document.getElementById('btn-modal-ok');
+    if (modalOkBtn) {
+        modalOkBtn.addEventListener('click', function () {
+            const modal = document.getElementById('cart-modal');
+            const standardActions = document.getElementById('modal-actions-standard');
+            const alertActions = document.getElementById('modal-actions-alert');
+
+            if (modal) {
+                modal.style.display = 'none';
+
+                if (standardActions) standardActions.style.display = 'flex';
+                if (alertActions) alertActions.style.display = 'none';
             }
         });
     }

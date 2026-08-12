@@ -283,32 +283,39 @@ body {
     color: #b0b0b0;
 }
 
-/* ===================== 5. TABULKY (KOŠÍK, OBJEDNÁVKY) ===================== */
+/* ===================== 5. TABULKY A SHRNUTÍ ===================== */
+
 .cart-table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
     background: #353535;
-    border-radius: 6px;
+    border-radius: 8px;
     overflow: hidden;
-    border: 1px solid #3b71ca;
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.15);
+    border: 1px solid #3b71ca !important;
+    box-shadow: 0 4px 18px rgba(0, 123, 255, 0.2);
 }
 
-.cart-table th, .cart-table td {
+table th,
+table td {
     padding: 12px 15px;
-    text-align: left;
     border-bottom: 1px solid #444444;
     white-space: nowrap;
+    text-align: center !important;
 }
 
-.cart-table a {
+table th:first-child,
+table td:first-child {
+    text-align: left !important;
+}
+
+table a {
     color: #ffffff;
     text-decoration: none;
     transition: color 0.2s ease;
 }
 
-.cart-table a:hover {
+table a:hover {
     color: #228be6;
     text-decoration: none;
 }
@@ -318,6 +325,11 @@ body {
     margin-left: auto;
     margin-bottom: 20px;
     text-align: right;
+    background: linear-gradient(145deg, #383838, #303030);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #3b71ca;
+    box-shadow: 0 4px 18px rgba(0, 123, 255, 0.2);
 }
 
 .cart-summary-row {
@@ -325,13 +337,9 @@ body {
     font-size: 1.1rem;
 }
 
-.cart-table th:nth-child(2),
-.cart-table td:nth-child(2),
-.cart-table th:nth-child(4),
-.cart-table td:nth-child(4),
-.cart-table th:nth-child(8),
-.cart-table td:nth-child(8) {
-    text-align: center;
+table,
+.cart-table {
+    border: 1px solid #3b71ca !important;
 }
 
 /* ===================== 6. TLAČÍTKA A VSTUPNÍ POLE ===================== */
@@ -507,4 +515,47 @@ body {
     display: inline-block;
     padding: 8px 16px;
     text-decoration: none;
+}
+
+/* ===================== LOGO SE ZÁŘÍ ===================== */
+.brand-logo.custom-logo {
+    display: inline-flex;
+    align-items: center;
+    font-weight: 900;
+    font-size: 1.4rem;
+    color: #228be6;
+    text-decoration: none;
+    padding: 5px 10px;
+    text-shadow: 0 0 10px rgba(34, 139, 230, 0.8), 0 0 20px rgba(34, 139, 230, 0.5), 0 0 30px rgba(34, 139, 230, 0.3);
+    transition: all 0.3s ease;
+}
+
+.brand-logo.custom-logo:hover {
+    text-shadow: 0 0 15px rgba(34, 139, 230, 1), 0 0 25px rgba(34, 139, 230, 0.8), 0 0 40px rgba(34, 139, 230, 0.5);
+}
+
+.logo-3, .logo-d {
+    font-size: 1.8rem;
+    line-height: 1;
+    color: #4dabf7;
+}
+
+.logo-stack {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    margin: 0 6px;
+    line-height: 1.1;
+}
+
+.logo-print {
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: #ffffff;
+}
+
+.logo-eshop {
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    color: #adb5bd;
 }

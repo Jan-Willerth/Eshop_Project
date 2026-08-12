@@ -15,7 +15,7 @@
             <strong id="modal-product-name"></strong>
         </p>
 
-        <div class="modal-actions">
+        <div id="modal-actions-standard" class="modal-actions">
             <button id="btn-continue-shopping" class="btn-secondary">
                 Pokračovat v nákupu
             </button>
@@ -23,6 +23,12 @@
             <a id="btn-go-to-cart" href="{% url 'catalog:cart_detail' %}" class="btn-primary">
                 Přejít do košíku
             </a>
+        </div>
+
+        <div id="modal-actions-alert" class="modal-actions" style="display: none;">
+            <button id="btn-modal-ok" class="btn-primary">
+                OK
+            </button>
         </div>
     </div>
 </div>

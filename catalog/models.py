@@ -69,21 +69,25 @@ class Category(models.Model):
         return f"<Category(id={self.id}, slug='{self.slug}')>"
 
 
+# ===================== PRICE WITH VAT MIXIN =====================
+class PriceWithVatMixin:
+    """Mixin providing calculation of price with VAT based on `price_net` and `vat_rate`."""
+
+    @property
+    def price_gross(self) -> Decimal:
+        if self.vat_rate and self.vat_rate.rate:
+            return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
+        return self.price_net
+
+
 # ===================== SHIPPING METHOD =====================
-class ShippingMethod(models.Model):
+class ShippingMethod(PriceWithVatMixin, models.Model):
     """Available delivery option."""
 
     name = models.CharField(max_length=100)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
     is_active = models.BooleanField(default=True)
-
-    @property
-    def price_gross(self) -> Decimal:
-        """Return gross price including VAT."""
-        if self.vat_rate and self.vat_rate.rate:
-            return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
-        return self.price_net
 
     def __str__(self) -> str:
         return self.name
@@ -93,20 +97,13 @@ class ShippingMethod(models.Model):
 
 
 # ===================== PAYMENT METHOD =====================
-class PaymentMethod(models.Model):
+class PaymentMethod(PriceWithVatMixin, models.Model):
     """Available payment option."""
 
     name = models.CharField(max_length=100)
     price_net = models.DecimalField(max_digits=10, decimal_places=2)
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
     is_active = models.BooleanField(default=True)
-
-    @property
-    def price_gross(self) -> Decimal:
-        """Return gross price including VAT."""
-        if self.vat_rate and self.vat_rate.rate:
-            return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
-        return self.price_net
 
     def __str__(self) -> str:
         return self.name
@@ -116,7 +113,7 @@ class PaymentMethod(models.Model):
 
 
 # ===================== PRODUCT =====================
-class Product(models.Model):
+class Product(PriceWithVatMixin, models.Model):
     """Catalog product with dimensions, pricing, and stock tracking."""
 
     name = models.CharField(max_length=255)
@@ -157,13 +154,6 @@ class Product(models.Model):
     )
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
-
-    @property
-    def price_gross(self) -> Decimal:
-        """Return gross price including VAT."""
-        if self.vat_rate and self.vat_rate.rate:
-            return round(self.price_net * (1 + self.vat_rate.rate / 100), 2)
-        return self.price_net
 
     def __str__(self) -> str:
         return self.name

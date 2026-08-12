@@ -1,0 +1,372 @@
+/* ==========================================
+   1. ZÁKLADNÍ NASTAVENÍ A ŠEDÝ DARK MODE
+   ================================---------- */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #2b2b2b; /* Příjemné středně šedé pozadí namísto černé */
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.main-header, .main-footer {
+    background-color: #353535; /* O něco světlejší šedá pro lišty */
+    border-bottom: 1px solid #444444;
+}
+
+.main-header {
+    padding: 10px 20px;
+}
+
+.main-footer {
+    padding: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: #b0b0b0;
+}
+
+.header-divider, .footer-divider {
+    border: 0;
+    height: 1px;
+    background-color: #4a4a4a;
+    margin: 0;
+}
+
+/* ==========================================
+   2. NAVIGACE (NAVBAR)
+   ================================---------- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.brand-logo {
+    font-size: 1.25rem;
+    text-decoration: none;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+.nav-account {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 14px;
+}
+
+.nav-account a {
+    color: #61b5ff; /* Jasnější modrá pro skvělou čitelnost na šedé */
+    text-decoration: none;
+}
+
+.nav-account a:hover {
+    text-decoration: underline;
+}
+
+.nav-cart .btn-cart {
+    background: linear-gradient(135deg, #1c7ed6, #228be6);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(34, 139, 230, 0.4);
+    border: 1px solid #4dabf7;
+}
+
+.nav-cart .badge {
+    background-color: #fa5252;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 50%;
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+/* ==========================================
+   3. KATALOG PRODUKTŮ (MŘÍŽKA A KARTY)
+   ================================---------- */
+.catalog-title {
+    margin-bottom: 20px;
+    color: #ffffff;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.product-card {
+    background: linear-gradient(145deg, #383838, #303030); /* Jemný přechod šedých odstínů */
+    border: 1px solid #3b71ca; /* Modravé orámování */
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 4px 14px rgba(0, 123, 255, 0.2); /* Stínované modré orámování */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.35);
+}
+
+.product-image-link {
+    display: block;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    background-color: #242424; /* Tmavší pozadí pro samotný rámeček obrázku, aby vynikl */
+}
+
+.product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.2s ease;
+}
+
+.product-image:hover {
+    transform: scale(1.03);
+}
+
+.product-card .product-title {
+    font-size: 1rem;
+    margin: 0 0 8px 0;
+}
+
+.product-card .product-title a {
+    color: #f1f3f5;
+    text-decoration: none;
+}
+
+.product-card .product-title a:hover {
+    color: #61b5ff;
+}
+
+.product-category {
+    color: #b0b0b0;
+    margin-bottom: 10px;
+}
+
+.product-pricing {
+    margin-bottom: 15px;
+}
+
+.price-gross {
+    font-size: 1.1rem;
+    color: #51cf66;
+}
+
+.price-net {
+    color: #b0b0b0;
+    font-size: 0.85rem;
+}
+
+/* ==========================================
+   4. DETAIL PRODUKTU A FORMULÁŘE
+   ================================---------- */
+.product-detail, .auth-form, .cart-summary {
+    background: linear-gradient(145deg, #383838, #303030);
+    padding: 30px;
+    border-radius: 8px;
+    border: 1px solid #3b71ca;
+    box-shadow: 0 4px 18px rgba(0, 123, 255, 0.2);
+}
+
+.product-detail-image {
+    max-width: 400px;
+    width: 100%;
+    height: 350px;
+    object-fit: contain;
+    border: 1px solid #4a4a4a;
+    border-radius: 6px;
+    background: #242424;
+    margin: 15px 0;
+}
+
+.product-buy-box {
+    margin: 20px 0;
+    padding: 15px;
+    background: #2e2e2e;
+    border-radius: 6px;
+    border: 1px solid #444;
+    display: inline-block;
+}
+
+.product-parameters {
+    margin-top: 25px;
+}
+
+.parameter-list {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 8px;
+    max-width: 400px;
+}
+
+.parameter-list dt {
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+.parameter-list dd {
+    margin: 0;
+    color: #b0b0b0;
+}
+
+/* ==========================================
+   5. TABULKY (KOŠÍK, OBJEDNÁVKY)
+   ================================---------- */
+.cart-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    background: #353535;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #3b71ca;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.15);
+}
+
+.cart-table th, .cart-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #444444;
+    white-space: nowrap;
+}
+
+.cart-table th {
+    background-color: #3e3e3e;
+    font-weight: bold;
+    color: #f1f3f5;
+}
+
+.cart-table td {
+    color: #e0e0e0;
+}
+
+.cart-summary {
+    max-width: 350px;
+    margin-left: auto;
+    margin-bottom: 20px;
+    text-align: right;
+}
+
+.cart-summary-row {
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+/* Zarovnání sloupců v tabulkách */
+.cart-table th:nth-child(2),
+.cart-table td:nth-child(2),
+.cart-table th:nth-child(4),
+.cart-table td:nth-child(4),
+.cart-table th:nth-child(8),
+.cart-table td:nth-child(8) {
+    text-align: center;
+}
+
+/* ==========================================
+   6. TLAČÍTKA A VSTUPNÍ POLE
+   ================================---------- */
+.btn-primary {
+    background: linear-gradient(135deg, #1c7ed6, #228be6);
+    color: white;
+    border: 1px solid #4dabf7;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(34, 139, 230, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1864ab, #1c7ed6);
+    box-shadow: 0 4px 12px rgba(34, 139, 230, 0.5);
+}
+
+.btn-secondary {
+    background-color: #495057;
+    color: #f1f3f5;
+    border: 1px solid #6c757d;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-secondary:hover {
+    background-color: #343a40;
+}
+
+.auth-form {
+    max-width: 450px;
+    margin: 40px auto;
+}
+
+.auth-form form p {
+    margin-bottom: 15px;
+}
+
+.auth-form input[type="text"],
+.auth-form input[type="email"],
+.auth-form input[type="password"],
+.auth-form input[type="number"],
+.cart-item-quantity input[type="number"] {
+    background-color: #242424;
+    border: 1px solid #555;
+    color: #ffffff;
+    padding: 8px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+.auth-form input:focus,
+.cart-item-quantity input:focus {
+    border-color: #228be6;
+    outline: none;
+    box-shadow: 0 0 6px rgba(34, 139, 230, 0.6);
+}
+
+.auth-form button[type="submit"] {
+    width: 100%;
+    background: linear-gradient(135deg, #2b8a3e, #37b24d);
+    color: white;
+    border: 1px solid #40c057;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    box-shadow: 0 2px 8px rgba(55, 178, 77, 0.3);
+}
+
+.auth-form button[type="submit"]:hover {
+    background: linear-gradient(135deg, #237032, #2b8a3e);
+}

@@ -142,7 +142,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = form.closest('tr');
         const qtyInput = form.querySelector('input[name="quantity"]');
         const warningWrapper = row.querySelector('.overstock-warning-wrapper');
-        const checkbox = warningWrapper ? warningWrapper.querySelector('.overstock-checkbox') : null;
+        const checkbox = warningWrapper ?
+            warningWrapper.querySelector('.overstock-checkbox') : null;
         const stockValElem = warningWrapper ? warningWrapper.querySelector('.stock-val') : null;
         const qtySpan = warningWrapper ? warningWrapper.querySelector('.qty-val') : null;
         const submitBtn = form.querySelector('button[type="submit"]');

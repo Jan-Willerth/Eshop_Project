@@ -1,11 +1,13 @@
 from decimal import Decimal
-from typing import Dict, List, Tuple, Union, Any
+from typing import Any, Dict, List, Tuple, Union
 
 from .models import Product
 
 
 # ===================== CART UTILITIES =====================
-def calculate_cart_totals(cart: Dict[str, Union[int, Dict[str, Any]]]) -> Tuple[List[Dict[str, Any]], int, Decimal, Decimal]:
+def calculate_cart_totals(
+    cart: Dict[str, Union[int, Dict[str, Any]]],
+) -> Tuple[List[Dict[str, Any]], int, Decimal, Decimal]:
     """Calculate cart totals from session data.
 
     Supports legacy plain-int quantities and newer dict entries.
@@ -57,7 +59,9 @@ def calculate_cart_totals(cart: Dict[str, Union[int, Dict[str, Any]]]) -> Tuple[
 
 
 def cart_has_unconfirmed_overstock(cart: Dict[str, Any]) -> bool:
-    """Check whether the cart contains any item exceeding stock without overstock confirmation."""
+    """Check whether the cart contains any item exceeding stock without
+    overstock confirmation.
+    """
     product_ids = [int(pid) for pid in cart.keys() if pid.isdigit()]
     products_dict = {p.id: p for p in Product.objects.filter(id__in=product_ids)}
 

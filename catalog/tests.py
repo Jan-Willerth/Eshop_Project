@@ -1,14 +1,22 @@
 import json
 from decimal import Decimal
 
-from django.test import TestCase, Client
-from django.urls import reverse
-from django.core import mail
-from catalog.forms import OrderForm
 from django.contrib.auth.models import User
-from catalog.forms import RegistrationForm
+from django.core import mail
+from django.test import Client, TestCase
+from django.urls import reverse
 
-from catalog.models import CompanyBillingProfile, Category, Product, Profile, VatRate, ShippingMethod, PaymentMethod, OrderStatus, Order
+from catalog.forms import OrderForm, RegistrationForm
+from catalog.models import (
+    Category,
+    Order,
+    OrderStatus,
+    PaymentMethod,
+    Product,
+    Profile,
+    ShippingMethod,
+    VatRate,
+)
 
 
 # ===================== CART TESTS =====================
@@ -21,13 +29,13 @@ class CartViewsTestCase(TestCase):
         self.vat_standard = VatRate.objects.create(
             label='21%',
             rate=Decimal('21.00'),
-            is_active=True
+            is_active=True,
         )
 
         self.category = Category.objects.create(
             name='Filamenty',
             slug='filamenty',
-            is_active=True
+            is_active=True,
         )
 
         self.product_limited = Product.objects.create(
@@ -37,7 +45,7 @@ class CartViewsTestCase(TestCase):
             vat_rate=self.vat_standard,
             category=self.category,
             stock=5,
-            is_active=True
+            is_active=True,
         )
 
         self.product_secondary = Product.objects.create(
@@ -47,13 +55,14 @@ class CartViewsTestCase(TestCase):
             vat_rate=self.vat_standard,
             category=self.category,
             stock=10,
-            is_active=True
+            is_active=True,
         )
-
 
     # ===================== BASIC CART OPERATIONS =====================
     def test_add_to_cart_successful(self):
-        """Adding a valid quantity saves a dict with quantity and overstock_confirmed=False."""
+        """Adding a valid quantity saves a dict with quantity and
+        overstock_confirmed=False.
+        """
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(url, {'quantity': 2})
 
@@ -62,28 +71,32 @@ class CartViewsTestCase(TestCase):
         self.assertIn(str(self.product_limited.id), cart)
         self.assertEqual(
             cart[str(self.product_limited.id)],
-            {'quantity': 2, 'overstock_confirmed': False}
+            {'quantity': 2, 'overstock_confirmed': False},
         )
 
     def test_add_to_cart_overstock_without_confirmation(self):
-        """Adding more than stock without confirmation redirects back and leaves cart unchanged."""
+        """Adding more than stock without confirmation redirects back and
+        leaves cart unchanged.
+        """
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(url, {'quantity': 15})
 
         self.assertEqual(response.status_code, 302)
         self.assertIn(
             reverse('catalog:product_detail', args=[self.product_limited.slug]),
-            response.url
+            response.url,
         )
         cart = self.client.session.get('cart', {})
         self.assertNotIn(str(self.product_limited.id), cart)
 
     def test_add_to_cart_overstock_with_confirmation(self):
-        """Overstock with confirmation saves a dict with overstock_confirmed=True."""
+        """Overstock with confirmation saves a dict with
+        overstock_confirmed=True.
+        """
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(url, {
             'quantity': 15,
-            'overstock_confirmed': True
+            'overstock_confirmed': True,
         })
 
         self.assertEqual(response.status_code, 302)
@@ -91,34 +104,47 @@ class CartViewsTestCase(TestCase):
         self.assertIn(str(self.product_limited.id), cart)
         self.assertEqual(
             cart[str(self.product_limited.id)],
-            {'quantity': 15, 'overstock_confirmed': True}
+            {'quantity': 15, 'overstock_confirmed': True},
         )
 
     def test_update_cart_quantity_override(self):
-        """Override replaces existing cart entry quantity and resets overstock flag."""
+        """Override replaces existing cart entry quantity and resets overstock
+        flag.
+        """
         session = self.client.session
-        session['cart'] = {str(self.product_limited.id): {'quantity': 3, 'overstock_confirmed': False}}
+        session['cart'] = {
+            str(self.product_limited.id): {
+                'quantity': 3,
+                'overstock_confirmed': False,
+            },
+        }
         session.save()
 
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         self.client.post(url, {
             'quantity': 7,
             'override': 'on',
-            'overstock_confirmed': True
+            'overstock_confirmed': True,
         })
 
         cart = self.client.session.get('cart', {})
         self.assertEqual(
             cart[str(self.product_limited.id)],
-            {'quantity': 7, 'overstock_confirmed': True}
+            {'quantity': 7, 'overstock_confirmed': True},
         )
 
     def test_remove_from_cart_successful(self):
         """Removing an item deletes only that entry from the cart."""
         session = self.client.session
         session['cart'] = {
-            str(self.product_limited.id): {'quantity': 2, 'overstock_confirmed': False},
-            str(self.product_secondary.id): {'quantity': 1, 'overstock_confirmed': False},
+            str(self.product_limited.id): {
+                'quantity': 2,
+                'overstock_confirmed': False,
+            },
+            str(self.product_secondary.id): {
+                'quantity': 1,
+                'overstock_confirmed': False,
+            },
         }
         session.save()
 
@@ -131,7 +157,9 @@ class CartViewsTestCase(TestCase):
         self.assertIn(str(self.product_secondary.id), cart)
 
     def test_invalid_quantity_input_fallback(self):
-        """Invalid quantity values (empty, zero, negative, non-numeric) default to 1."""
+        """Invalid quantity values (empty, zero, negative, non-numeric) default
+        to 1.
+        """
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         invalid_inputs = ['', '0', '-5', 'abc', '   ']
 
@@ -141,7 +169,7 @@ class CartViewsTestCase(TestCase):
             cart = client.session.get('cart', {})
             self.assertEqual(
                 cart[str(self.product_limited.id)],
-                {'quantity': 1, 'overstock_confirmed': False}
+                {'quantity': 1, 'overstock_confirmed': False},
             )
 
     def test_quantity_exceeds_max_fallback(self):
@@ -153,11 +181,13 @@ class CartViewsTestCase(TestCase):
         self.assertNotIn(str(self.product_limited.id), cart)
         self.assertRedirects(
             response,
-            reverse('catalog:product_detail', args=[self.product_limited.slug])
+            reverse('catalog:product_detail', args=[self.product_limited.slug]),
         )
 
     def test_add_to_cart_accumulates(self):
-        """Adding the same product twice without override accumulates quantity."""
+        """Adding the same product twice without override accumulates
+        quantity.
+        """
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         self.client.post(url, {'quantity': 2})
         self.client.post(url, {'quantity': 3})
@@ -165,24 +195,29 @@ class CartViewsTestCase(TestCase):
         cart = self.client.session.get('cart', {})
         self.assertEqual(
             cart[str(self.product_limited.id)],
-            {'quantity': 5, 'overstock_confirmed': False}
+            {'quantity': 5, 'overstock_confirmed': False},
         )
 
     def test_cart_detail_shows_warning_for_unconfirmed_overstock(self):
-        """Cart detail page warns and hides checkout link when overstock is unconfirmed."""
+        """Cart detail page warns and hides checkout link when overstock is
+        unconfirmed.
+        """
         session = self.client.session
         session['cart'] = {
             str(self.product_limited.id): {
                 'quantity': 10,
-                'overstock_confirmed': False
-            }
+                'overstock_confirmed': False,
+            },
         }
         session.save()
 
         url = reverse('catalog:cart_detail')
         response = self.client.get(url)
 
-        self.assertContains(response, 'V košíku máte zboží, které překračuje naše skladové zásoby')
+        self.assertContains(
+            response,
+            'V košíku máte zboží, které překračuje naše skladové zásoby',
+        )
         self.assertNotContains(response, reverse('catalog:checkout'))
 
     # ===================== CART CONTEXT TESTS =====================
@@ -190,8 +225,14 @@ class CartViewsTestCase(TestCase):
         """Cart detail view returns items, totals, and correct subtotals."""
         session = self.client.session
         session['cart'] = {
-            str(self.product_limited.id): {'quantity': 2, 'overstock_confirmed': False},
-            str(self.product_secondary.id): {'quantity': 3, 'overstock_confirmed': False},
+            str(self.product_limited.id): {
+                'quantity': 2,
+                'overstock_confirmed': False,
+            },
+            str(self.product_secondary.id): {
+                'quantity': 3,
+                'overstock_confirmed': False,
+            },
         }
         session.save()
 
@@ -207,23 +248,29 @@ class CartViewsTestCase(TestCase):
 
         item1 = next(i for i in items if i['product'].id == self.product_limited.id)
         self.assertEqual(item1['quantity'], 2)
-        self.assertEqual(item1['subtotal_gross'], self.product_limited.price_gross * 2)
+        self.assertEqual(
+            item1['subtotal_gross'],
+            self.product_limited.price_gross * 2,
+        )
 
         item2 = next(i for i in items if i['product'].id == self.product_secondary.id)
         self.assertEqual(item2['quantity'], 3)
-        self.assertEqual(item2['subtotal_gross'], self.product_secondary.price_gross * 3)
+        self.assertEqual(
+            item2['subtotal_gross'],
+            self.product_secondary.price_gross * 3,
+        )
 
         self.assertEqual(context['total_quantity'], 5)
 
         expected_total_gross = (
-            self.product_limited.price_gross * 2 +
-            self.product_secondary.price_gross * 3
+            self.product_limited.price_gross * 2
+            + self.product_secondary.price_gross * 3
         )
         self.assertEqual(context['total_gross'], expected_total_gross)
 
         expected_total_net = (
-            self.product_limited.price_net * 2 +
-            self.product_secondary.price_net * 3
+            self.product_limited.price_net * 2
+            + self.product_secondary.price_net * 3
         )
         self.assertEqual(context['total_net'], expected_total_net)
 
@@ -250,7 +297,7 @@ class CartViewsTestCase(TestCase):
         response = self.client.post(
             url,
             {'quantity': 2},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
 
         self.assertEqual(response.status_code, 200)
@@ -267,7 +314,7 @@ class CartViewsTestCase(TestCase):
         response = self.client.post(
             url,
             {'quantity': 100},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
 
         self.assertEqual(response.status_code, 400)
@@ -279,14 +326,19 @@ class CartViewsTestCase(TestCase):
     def test_update_cart_ajax(self):
         """AJAX update (override) returns recalculated JSON totals."""
         session = self.client.session
-        session['cart'] = {str(self.product_limited.id): {'quantity': 3, 'overstock_confirmed': False}}
+        session['cart'] = {
+            str(self.product_limited.id): {
+                'quantity': 3,
+                'overstock_confirmed': False,
+            },
+        }
         session.save()
 
         url = reverse('catalog:add_to_cart', args=[self.product_limited.id])
         response = self.client.post(
             url,
             {'quantity': 5, 'override': 'on'},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
 
         self.assertEqual(response.status_code, 200)
@@ -302,15 +354,21 @@ class CartViewsTestCase(TestCase):
         """AJAX remove returns JSON with updated cart summary."""
         session = self.client.session
         session['cart'] = {
-            str(self.product_limited.id): {'quantity': 2, 'overstock_confirmed': False},
-            str(self.product_secondary.id): {'quantity': 3, 'overstock_confirmed': False},
+            str(self.product_limited.id): {
+                'quantity': 2,
+                'overstock_confirmed': False,
+            },
+            str(self.product_secondary.id): {
+                'quantity': 3,
+                'overstock_confirmed': False,
+            },
         }
         session.save()
 
         url = reverse('catalog:cart_remove', args=[self.product_limited.id])
         response = self.client.post(
             url,
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
 
         self.assertEqual(response.status_code, 200)
@@ -330,7 +388,7 @@ class CartViewsTestCase(TestCase):
         response = self.client.post(
             url,
             {'quantity': 1, 'overstock_confirmed': True},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         data = response.json()
         self.assertIn('stock_warning', data)
@@ -346,19 +404,19 @@ class OrderFormTestCase(TestCase):
         self.vat_standard = VatRate.objects.create(
             label='21%',
             rate=Decimal('21.00'),
-            is_active=True
+            is_active=True,
         )
         self.shipping_method = ShippingMethod.objects.create(
             name='Balík do ruky',
             price_net=Decimal('99.00'),
             vat_rate=self.vat_standard,
-            is_active=True
+            is_active=True,
         )
         self.payment_method = PaymentMethod.objects.create(
             name='Platba kartou',
             price_net=Decimal('0.00'),
             vat_rate=self.vat_standard,
-            is_active=True
+            is_active=True,
         )
         self.base_data = {
             'customer_email': 'jan@example.com',
@@ -406,8 +464,14 @@ class OrderFormTestCase(TestCase):
         self.assertIn('billing_ico', form.errors)
 
     def test_order_form_capitalizes_shipping_names(self):
-        """Shipping first/last name are capitalized regardless of input casing."""
-        form_data = {**self.base_data, 'shipping_first_name': 'jan', 'shipping_last_name': 'novák'}
+        """Shipping first/last name are capitalized regardless of input
+        casing.
+        """
+        form_data = {
+            **self.base_data,
+            'shipping_first_name': 'jan',
+            'shipping_last_name': 'novák',
+        }
         form = OrderForm(data=form_data)
 
         self.assertTrue(form.is_valid(), form.errors)
@@ -415,7 +479,9 @@ class OrderFormTestCase(TestCase):
         self.assertEqual(form.cleaned_data['shipping_last_name'], 'Novák')
 
     def test_order_form_billing_ico_invalid_length(self):
-        """billing_ico must be exactly 8 digits when billing_different is checked."""
+        """billing_ico must be exactly 8 digits when billing_different is
+        checked.
+        """
         form_data = {
             **self.base_data,
             'billing_different': True,
@@ -448,7 +514,10 @@ class OrderFormTestCase(TestCase):
     def test_anonymous_order_above_limit_requires_advance_payment(self):
         """Anonymous order over 1000 Kč with cash-on-delivery is invalid."""
         cash_on_delivery = PaymentMethod.objects.create(
-            name='Dobírka', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True,
+            name='Dobírka',
+            price_net=Decimal('0.00'),
+            vat_rate=self.vat_standard,
+            is_active=True,
         )
         form = OrderForm(
             data={**self.base_data, 'payment_method': cash_on_delivery.id},
@@ -459,9 +528,14 @@ class OrderFormTestCase(TestCase):
         self.assertIn('payment_method', form.errors)
 
     def test_registered_order_above_limit_requires_advance_payment(self):
-        """Registered-user order over 5000 Kč with cash-on-delivery is invalid."""
+        """Registered-user order over 5000 Kč with cash-on-delivery is
+        invalid.
+        """
         cash_on_delivery = PaymentMethod.objects.create(
-            name='Dobírka', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True,
+            name='Dobírka',
+            price_net=Decimal('0.00'),
+            vat_rate=self.vat_standard,
+            is_active=True,
         )
         form = OrderForm(
             data={**self.base_data, 'payment_method': cash_on_delivery.id},
@@ -481,19 +555,19 @@ class OrderViewTestCase(TestCase):
         self.vat_standard = VatRate.objects.create(
             label='21%',
             rate=Decimal('21.00'),
-            is_active=True
+            is_active=True,
         )
         self.shipping_method = ShippingMethod.objects.create(
             name='Balík do ruky',
             price_net=Decimal('99.00'),
             vat_rate=self.vat_standard,
-            is_active=True
+            is_active=True,
         )
         self.payment_method = PaymentMethod.objects.create(
             name='Platba kartou',
             price_net=Decimal('0.00'),
             vat_rate=self.vat_standard,
-            is_active=True
+            is_active=True,
         )
         self.base_data = {
             'customer_email': 'jan@example.com',
@@ -511,9 +585,13 @@ class OrderViewTestCase(TestCase):
             slug='spectrum-pla-bila-checkout',
             price_net=Decimal('450.00'),
             vat_rate=self.vat_standard,
-            category=Category.objects.create(name='Filamenty', slug='filamenty-checkout', is_active=True),
+            category=Category.objects.create(
+                name='Filamenty',
+                slug='filamenty-checkout',
+                is_active=True,
+            ),
             stock=5,
-            is_active=True
+            is_active=True,
         )
         self.order_status = OrderStatus.objects.create(code='new', name='Nová')
 
@@ -522,7 +600,6 @@ class OrderViewTestCase(TestCase):
             email='zakaznik@example.com',
             password='SilneHeslo123',
         )
-
 
     def test_checkout_get_renders_form(self):
         """GET request renders the checkout page with an OrderForm instance."""
@@ -533,7 +610,9 @@ class OrderViewTestCase(TestCase):
         self.assertIsInstance(response.context['form'], OrderForm)
 
     def test_checkout_post_invalid_data_rerenders_with_errors(self):
-        """POST with missing required field re-renders the form with errors, status 200."""
+        """POST with missing required field re-renders the form with errors,
+        status 200.
+        """
         url = reverse('catalog:checkout')
         invalid_data = {**self.base_data, 'customer_email': ''}
         response = self.client.post(url, invalid_data)
@@ -550,10 +629,15 @@ class OrderViewTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
     def test_checkout_get_redirects_when_cart_has_unconfirmed_overstock(self):
-        """GET checkout redirects to cart with an error when cart has unconfirmed overstock."""
+        """GET checkout redirects to cart with an error when cart has
+        unconfirmed overstock.
+        """
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 10, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 10,
+                'overstock_confirmed': False,
+            },
         }
         session.save()
 
@@ -563,10 +647,15 @@ class OrderViewTestCase(TestCase):
         self.assertRedirects(response, reverse('catalog:cart_detail'))
 
     def test_checkout_post_rejected_when_cart_has_unconfirmed_overstock(self):
-        """POST checkout does not process the order when cart has unconfirmed overstock."""
+        """POST checkout does not process the order when cart has unconfirmed
+        overstock.
+        """
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 10, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 10,
+                'overstock_confirmed': False,
+            },
         }
         session.save()
 
@@ -576,7 +665,9 @@ class OrderViewTestCase(TestCase):
         self.assertRedirects(response, reverse('catalog:cart_detail'))
 
     def test_checkout_post_valid_saves_pending_order_and_redirects_to_summary(self):
-        """Valid POST saves form data to session['pending_order'] and redirects to summary."""
+        """Valid POST saves form data to session['pending_order'] and redirects
+        to summary.
+        """
         url = reverse('catalog:checkout')
         response = self.client.post(url, self.base_data)
 
@@ -592,7 +683,10 @@ class OrderViewTestCase(TestCase):
         """GET summary page shows item totals and the net grand total."""
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 2,
+                'overstock_confirmed': False,
+            },
         }
         session['pending_order'] = {
             'customer_email': 'jan@example.com',
@@ -628,9 +722,15 @@ class OrderViewTestCase(TestCase):
         expected_products_gross = self.limited_product.price_gross * 2
         expected_products_net = self.limited_product.price_net * 2
         expected_grand_total_net = (
-            expected_products_net + self.shipping_method.price_net + self.payment_method.price_net
+            expected_products_net
+            + self.shipping_method.price_net
+            + self.payment_method.price_net
         )
-        expected_grand_total = expected_products_gross + self.shipping_method.price_gross + self.payment_method.price_gross
+        expected_grand_total = (
+            expected_products_gross
+            + self.shipping_method.price_gross
+            + self.payment_method.price_gross
+        )
 
         self.assertEqual(context['products_total_gross'], expected_products_gross)
         self.assertEqual(context['shipping'].price_gross, self.shipping_method.price_gross)
@@ -642,7 +742,10 @@ class OrderViewTestCase(TestCase):
         """POST creates an Order with items and clears the session."""
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 2,
+                'overstock_confirmed': False,
+            },
         }
         session['pending_order'] = {
             'customer_email': 'jan@example.com',
@@ -670,7 +773,10 @@ class OrderViewTestCase(TestCase):
         response = self.client.post(url)
 
         order = Order.objects.first()
-        self.assertRedirects(response, reverse('catalog:order_success', kwargs={'order_id': order.id}))
+        self.assertRedirects(
+            response,
+            reverse('catalog:order_success', kwargs={'order_id': order.id}),
+        )
 
         self.assertEqual(Order.objects.count(), 1)
         order = Order.objects.first()
@@ -678,9 +784,9 @@ class OrderViewTestCase(TestCase):
         self.assertEqual(order.items.count(), 1)
 
         expected_total = (
-                self.limited_product.price_gross * 2
-                + self.shipping_method.price_gross
-                + self.payment_method.price_gross
+            self.limited_product.price_gross * 2
+            + self.shipping_method.price_gross
+            + self.payment_method.price_gross
         )
         self.assertEqual(order.total_price_gross, expected_total)
 
@@ -694,7 +800,10 @@ class OrderViewTestCase(TestCase):
         """POST creates an order and sends a confirmation email."""
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 2,
+                'overstock_confirmed': False,
+            },
         }
         session['pending_order'] = {
             'customer_email': 'jan@example.com',
@@ -732,7 +841,10 @@ class OrderViewTestCase(TestCase):
         """POST sends a PDF invoice attachment when billing_different is True."""
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 2,
+                'overstock_confirmed': False,
+            },
         }
         session['pending_order'] = {
             'customer_email': 'firma@example.com',
@@ -768,10 +880,15 @@ class OrderViewTestCase(TestCase):
         self.assertTrue(filename.startswith('danovy_doklad_'))
 
     def test_checkout_summary_post_sends_pdf_for_consumer_order(self):
-        """POST sends a simplified tax document PDF attachment for a B2C order too."""
+        """POST sends a simplified tax document PDF attachment for a B2C order
+        too.
+        """
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 2, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 2,
+                'overstock_confirmed': False,
+            },
         }
         session['pending_order'] = {
             'customer_email': 'jan@example.com',
@@ -807,7 +924,9 @@ class OrderViewTestCase(TestCase):
         self.assertTrue(filename.startswith('zjednoduseny_danovy_doklad_'))
 
     def test_checkout_summary_get_redirects_without_pending_order(self):
-        """GET summary page redirects to checkout form if no pending_order in session."""
+        """GET summary page redirects to checkout form if no pending_order in
+        session.
+        """
         url = reverse('catalog:checkout_summary')
         response = self.client.get(url)
 
@@ -819,7 +938,10 @@ class OrderViewTestCase(TestCase):
 
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 1, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 1,
+                'overstock_confirmed': False,
+            },
         }
         session['pending_order'] = {
             'customer_email': 'zakaznik@example.com',
@@ -853,7 +975,10 @@ class OrderViewTestCase(TestCase):
         """POST while anonymous leaves order.user as None."""
         session = self.client.session
         session['cart'] = {
-            str(self.limited_product.id): {'quantity': 1, 'overstock_confirmed': False}
+            str(self.limited_product.id): {
+                'quantity': 1,
+                'overstock_confirmed': False,
+            },
         }
         session['pending_order'] = {
             'customer_email': 'anonym@example.com',
@@ -886,13 +1011,15 @@ class OrderViewTestCase(TestCase):
 
 # ===================== SHIPPING & PAYMENT MODEL TESTS =====================
 class ShippingPaymentModelTestCase(TestCase):
-    """Test suite for gross price calculation on ShippingMethod and PaymentMethod."""
+    """Test suite for gross price calculation on ShippingMethod and
+    PaymentMethod.
+    """
 
     def setUp(self):
         self.vat_standard = VatRate.objects.create(
             label='21%',
             rate=Decimal('21.00'),
-            is_active=True
+            is_active=True,
         )
 
     def test_shipping_method_price_gross(self):
@@ -901,7 +1028,7 @@ class ShippingPaymentModelTestCase(TestCase):
             name='Zásilkovna',
             price_net=Decimal('89.00'),
             vat_rate=self.vat_standard,
-            is_active=True
+            is_active=True,
         )
         self.assertEqual(shipping.price_gross, Decimal('107.69'))
 
@@ -911,7 +1038,7 @@ class ShippingPaymentModelTestCase(TestCase):
             name='Dobírka',
             price_net=Decimal('40.00'),
             vat_rate=self.vat_standard,
-            is_active=True
+            is_active=True,
         )
         self.assertEqual(payment.price_gross, Decimal('48.40'))
 
@@ -940,14 +1067,22 @@ class RegistrationFormTestCase(TestCase):
 
     def test_registration_form_duplicate_email(self):
         """Registering with an already-used email is invalid."""
-        User.objects.create_user(username='existujici@example.com', email='existujici@example.com', password='Heslo123456')
+        User.objects.create_user(
+            username='existujici@example.com',
+            email='existujici@example.com',
+            password='Heslo123456',
+        )
 
-        form = RegistrationForm(data={**self.valid_data, 'email': 'existujici@example.com'})
+        form = RegistrationForm(
+            data={**self.valid_data, 'email': 'existujici@example.com'}
+        )
         self.assertFalse(form.is_valid())
         self.assertIn('email', form.errors)
 
     def test_registration_form_saves_user_and_profile(self):
-        """Saving the form creates a User (email as username) and a linked Profile."""
+        """Saving the form creates a User (email as username) and a linked
+        Profile.
+        """
         form = RegistrationForm(data=self.valid_data)
         self.assertTrue(form.is_valid(), form.errors)
 
@@ -964,7 +1099,9 @@ class RegistrationFormTestCase(TestCase):
         self.assertEqual(user.profile.zip_code, '11000')
 
     def test_registration_with_company_invoice_saves_billing_profile(self):
-        """B2B registration stores optional company data linked to the user profile."""
+        """B2B registration stores optional company data linked to the user
+        profile.
+        """
         form = RegistrationForm(data={
             **self.valid_data,
             'billing_different': True,
@@ -985,10 +1122,16 @@ class ProfileUpdateViewTestCase(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(
-            username='profil@example.com', email='profil@example.com', password='SilneHeslo123',
+            username='profil@example.com',
+            email='profil@example.com',
+            password='SilneHeslo123',
         )
         Profile.objects.create(
-            user=self.user, phone='732123456', street='Hlavní 1', city='Praha', zip_code='11000',
+            user=self.user,
+            phone='732123456',
+            street='Hlavní 1',
+            city='Praha',
+            zip_code='11000',
         )
 
     def test_profile_update_creates_company_billing_profile(self):
@@ -1012,7 +1155,10 @@ class ProfileUpdateViewTestCase(TestCase):
         })
 
         self.assertRedirects(response, reverse('catalog:profile_update'))
-        self.assertEqual(self.user.profile.company_billing.company_name, 'Example s.r.o.')
+        self.assertEqual(
+            self.user.profile.company_billing.company_name,
+            'Example s.r.o.',
+        )
 
 
 # ===================== ORDER HISTORY TESTS =====================
@@ -1020,17 +1166,35 @@ class OrderHistoryTestCase(TestCase):
     """Test suite for the 'Moje objednávky' order-history page (Blok 8)."""
 
     def setUp(self):
-        self.vat_standard = VatRate.objects.create(label='21%', rate=Decimal('21.00'), is_active=True)
+        self.vat_standard = VatRate.objects.create(
+            label='21%',
+            rate=Decimal('21.00'),
+            is_active=True,
+        )
         self.shipping_method = ShippingMethod.objects.create(
-            name='Balík do ruky', price_net=Decimal('99.00'), vat_rate=self.vat_standard, is_active=True
+            name='Balík do ruky',
+            price_net=Decimal('99.00'),
+            vat_rate=self.vat_standard,
+            is_active=True,
         )
         self.payment_method = PaymentMethod.objects.create(
-            name='Platba kartou', price_net=Decimal('0.00'), vat_rate=self.vat_standard, is_active=True
+            name='Platba kartou',
+            price_net=Decimal('0.00'),
+            vat_rate=self.vat_standard,
+            is_active=True,
         )
         self.order_status = OrderStatus.objects.create(code='new', name='Nová')
 
-        self.user_a = User.objects.create_user(username='alice@example.com', email='alice@example.com', password='SilneHeslo123')
-        self.user_b = User.objects.create_user(username='bob@example.com', email='bob@example.com', password='SilneHeslo123')
+        self.user_a = User.objects.create_user(
+            username='alice@example.com',
+            email='alice@example.com',
+            password='SilneHeslo123',
+        )
+        self.user_b = User.objects.create_user(
+            username='bob@example.com',
+            email='bob@example.com',
+            password='SilneHeslo123',
+        )
 
         self.order_a = self._create_order(self.user_a, 'alice@example.com')
         self.order_b = self._create_order(self.user_b, 'bob@example.com')

@@ -1,27 +1,47 @@
 from decimal import Decimal
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+
 from django.contrib import messages
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
-from django.utils.safestring import mark_safe
-from django.urls import reverse
 from django.db import transaction
 from django.db.models import F
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+from django.views.decorators.http import require_POST
 
-from .models import (
-    Category, CompanyBillingProfile, Product, Profile, ShippingMethod, PaymentMethod,
-    OrderStatus, Order, OrderItem, generate_invoice_pdf,
-)
-from .forms import CartAddProductForm, ProfileUpdateForm, QuoteRequestForm, OrderForm, RegistrationForm
 from .cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
+from .forms import (
+    CartAddProductForm,
+    OrderForm,
+    ProfileUpdateForm,
+    QuoteRequestForm,
+    RegistrationForm,
+)
+from .models import (
+    Category,
+    CompanyBillingProfile,
+    Order,
+    OrderItem,
+    OrderStatus,
+    PaymentMethod,
+    Product,
+    Profile,
+    ShippingMethod,
+    generate_invoice_pdf,
+)
 
 
 # ===================== CATALOG VIEWS =====================
 def product_list(request: HttpRequest) -> HttpResponse:
-    """Render the active product catalog with optimized category prefetching."""
-    products = Product.objects.filter(is_active=True).select_related('vat_rate', 'category__parent')
+    """Render the active product catalog with optimized category
+    prefetching.
+    """
+    products = (
+        Product.objects.filter(is_active=True)
+        .select_related('vat_rate', 'category__parent')
+    )
     categories = Category.objects.filter(is_active=True).select_related('parent')
 
     return render(request, 'catalog/product_list.html', {
@@ -35,7 +55,7 @@ def product_detail(request: HttpRequest, slug: str) -> HttpResponse:
     product = get_object_or_404(
         Product.objects.select_related('vat_rate', 'category__parent'),
         slug=slug,
-        is_active=True
+        is_active=True,
     )
     return render(request, 'catalog/product_detail.html', {
         'product': product,
@@ -50,7 +70,9 @@ def custom_quote(request: HttpRequest) -> HttpResponse:
         product_id = request.GET.get('product')
         quantity = request.GET.get('quantity')
         if product_id:
-            initial['product'] = get_object_or_404(Product, id=product_id, is_active=True)
+            initial['product'] = get_object_or_404(
+                Product, id=product_id, is_active=True
+            )
         if quantity:
             initial['quantity'] = quantity
 
@@ -58,7 +80,10 @@ def custom_quote(request: HttpRequest) -> HttpResponse:
         form = QuoteRequestForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Vaše poptávka byla odeslána. Budeme vás kontaktovat.')
+            messages.success(
+                request,
+                'Vaše poptávka byla odeslána. Budeme vás kontaktovat.',
+            )
             return redirect('catalog:product_list')
     else:
         form = QuoteRequestForm(initial=initial)
@@ -94,7 +119,11 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
             new_quantity = quantity
         else:
             existing_entry = cart.get(product_key, 0)
-            existing_qty = existing_entry.get('quantity', 0) if isinstance(existing_entry, dict) else existing_entry
+            existing_qty = (
+                existing_entry.get('quantity', 0)
+                if isinstance(existing_entry, dict)
+                else existing_entry
+            )
             new_quantity = existing_qty + quantity
 
         cart[product_key] = {
@@ -111,13 +140,26 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
         is_overstock = new_quantity > product.stock
 
         if product.stock == 0:
-            stock_warning = "Zboží není skladem. Předpokládaná dodací lhůta 3–5 pracovních dnů."
+            stock_warning = (
+                "Zboží není skladem. Předpokládaná dodací lhůta 3–5 pracovních dnů."
+            )
         elif is_overstock:
-            stock_warning = f"Požadované množství ({new_quantity}) přesahuje skladové zásoby ({product.stock}). Dodací lhůta může být prodloužena."
+            stock_warning = (
+                f"Požadované množství ({new_quantity}) přesahuje skladové zásoby "
+                f"({product.stock}). Dodací lhůta může být prodloužena."
+            )
 
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            item_subtotal_net = product.price_net * new_quantity if new_quantity > 0 else Decimal('0.00')
-            item_subtotal_gross = product.price_gross * new_quantity if new_quantity > 0 else Decimal('0.00')
+            item_subtotal_net = (
+                product.price_net * new_quantity
+                if new_quantity > 0
+                else Decimal('0.00')
+            )
+            item_subtotal_gross = (
+                product.price_gross * new_quantity
+                if new_quantity > 0
+                else Decimal('0.00')
+            )
 
             return JsonResponse({
                 'success': True,
@@ -136,11 +178,17 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
                 'stock': product.stock,
             })
 
-        messages.success(request, f'Produkt "{product.name}" byl přidán do košíku.')
+        messages.success(
+            request,
+            f'Produkt "{product.name}" byl přidán do košíku.',
+        )
         return redirect('catalog:cart_detail')
 
     raw_quantity = request.POST.get('quantity', '1')
-    quote_url = reverse('catalog:custom_quote') + f'?product={product.id}&quantity={raw_quantity}'
+    quote_url = (
+        reverse('catalog:custom_quote')
+        + f'?product={product.id}&quantity={raw_quantity}'
+    )
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         error_msg = "Opravte prosím chyby ve formuláři."
@@ -240,7 +288,7 @@ def checkout(request: HttpRequest) -> HttpResponse:
         messages.error(
             request,
             'V košíku máte položky přesahující skladové zásoby. '
-            'Pro pokračování je nutné potvrdit souhlas s delší dodací lhůtou.'
+            'Pro pokračování je nutné potvrdit souhlas s delší dodací lhůtou.',
         )
         return redirect('catalog:cart_detail')
 
@@ -306,7 +354,11 @@ def checkout(request: HttpRequest) -> HttpResponse:
                     })
         form = OrderForm(initial=initial, **form_context)
 
-    payment_limit = Decimal('5000.00') if request.user.is_authenticated else Decimal('1000.00')
+    payment_limit = (
+        Decimal('5000.00')
+        if request.user.is_authenticated
+        else Decimal('1000.00')
+    )
     return render(request, 'catalog/checkout.html', {
         'form': form,
         'payment_limit': payment_limit,
@@ -320,13 +372,21 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
         return redirect('catalog:checkout')
 
     cart = request.session.get('cart', {})
-    items, total_qty, products_total_net, products_total_gross = calculate_cart_totals(cart)
+    items, total_qty, products_total_net, products_total_gross = (
+        calculate_cart_totals(cart)
+    )
 
-    shipping = get_object_or_404(ShippingMethod, id=pending_order['shipping_method_id'])
-    payment = get_object_or_404(PaymentMethod, id=pending_order['payment_method_id'])
+    shipping = get_object_or_404(
+        ShippingMethod, id=pending_order['shipping_method_id']
+    )
+    payment = get_object_or_404(
+        PaymentMethod, id=pending_order['payment_method_id']
+    )
 
     grand_total_net = products_total_net + shipping.price_net + payment.price_net
-    grand_total_gross = products_total_gross + shipping.price_gross + payment.price_gross
+    grand_total_gross = (
+        products_total_gross + shipping.price_gross + payment.price_gross
+    )
 
     if request.method == 'POST':
         if not items:
@@ -401,7 +461,9 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
 
 
 def order_success(request: HttpRequest, order_id: int) -> HttpResponse:
-    """Display the thank-you page only to its owner or the just-completed anonymous checkout."""
+    """Display the thank-you page only to its owner or the just-completed
+    anonymous checkout.
+    """
     if request.user.is_authenticated:
         order = get_object_or_404(Order, id=order_id, user=request.user)
     else:
@@ -415,16 +477,23 @@ def order_success(request: HttpRequest, order_id: int) -> HttpResponse:
 def order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
     """Show a complete order detail to its authenticated owner only."""
     order = get_object_or_404(
-        Order.objects.select_related('status', 'shipping_method', 'payment_method').prefetch_related('items__product'),
+        Order.objects.select_related(
+            'status', 'shipping_method', 'payment_method'
+        ).prefetch_related('items__product'),
         id=order_id,
         user=request.user,
     )
-    order_items = [{
-        'item': item,
-        'total_net': item.unit_price_net * item.quantity,
-        'total_gross': item.unit_price_gross * item.quantity,
-    } for item in order.items.all()]
-    shipping_gross = order.shipping_price_net * (1 + order.shipping_vat_rate / Decimal('100'))
+    order_items = [
+        {
+            'item': item,
+            'total_net': item.unit_price_net * item.quantity,
+            'total_gross': item.unit_price_gross * item.quantity,
+        }
+        for item in order.items.all()
+    ]
+    shipping_gross = order.shipping_price_net * (
+        1 + order.shipping_vat_rate / Decimal('100')
+    )
 
     return render(request, 'catalog/order_detail.html', {
         'order': order,
@@ -437,26 +506,40 @@ def order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
 def order_invoice_download(request: HttpRequest, order_id: int) -> HttpResponse:
     """Download a tax document PDF only for the authenticated order owner."""
     order = get_object_or_404(
-        Order.objects.prefetch_related('items__product').select_related('shipping_method', 'payment_method'),
+        Order.objects.prefetch_related('items__product').select_related(
+            'shipping_method', 'payment_method'
+        ),
         id=order_id,
         user=request.user,
     )
     is_business = bool(order.billing_company_name)
-    filename_prefix = 'danovy_doklad' if is_business else 'zjednoduseny_danovy_doklad'
-    response = HttpResponse(generate_invoice_pdf(order), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename_prefix}_{order.id}.pdf"'
+    filename_prefix = (
+        'danovy_doklad' if is_business else 'zjednoduseny_danovy_doklad'
+    )
+    response = HttpResponse(
+        generate_invoice_pdf(order),
+        content_type='application/pdf',
+    )
+    response['Content-Disposition'] = (
+        f'attachment; filename="{filename_prefix}_{order.id}.pdf"'
+    )
     return response
 
 
 # ===================== AUTH VIEWS =====================
 def register(request: HttpRequest) -> HttpResponse:
-    """Display and process the registration form; log the user in on success."""
+    """Display and process the registration form; log the user in on
+    success.
+    """
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
             auth_login(request, user)
-            messages.success(request, 'Registrace proběhla úspěšně, jste přihlášeni.')
+            messages.success(
+                request,
+                'Registrace proběhla úspěšně, jste přihlášeni.',
+            )
             return redirect('catalog:product_list')
     else:
         form = RegistrationForm()

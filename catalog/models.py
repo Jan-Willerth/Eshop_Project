@@ -1,18 +1,18 @@
-from decimal import Decimal
 import io
+from decimal import Decimal
 
-from django.db import models
+from django.conf import settings
 from django.core.mail import EmailMessage
+from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.conf import settings
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib import colors
-from reportlab.platypus import Table, TableStyle, Paragraph
-from reportlab.lib.styles import ParagraphStyle
+from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph, Table, TableStyle
 
 
 # ===================== VAT RATE =====================
@@ -56,7 +56,7 @@ class Category(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='subcategories'
+        related_name='subcategories',
     )
 
     class Meta:
@@ -152,7 +152,9 @@ class Product(models.Model):
 
     stock = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
-    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
+    category = models.ForeignKey(
+        Category, on_delete=models.PROTECT, related_name='products'
+    )
     vat_rate = models.ForeignKey(VatRate, on_delete=models.PROTECT)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
 
@@ -167,14 +169,23 @@ class Product(models.Model):
         return self.name
 
     def __repr__(self) -> str:
-        return f"<Product(id={self.id}, slug='{self.slug}', price_net={self.price_net})>"
+        return (
+            f"<Product(id={self.id}, slug='{self.slug}', "
+            f"price_net={self.price_net})>"
+        )
 
 
 # ===================== ORDER =====================
 class Order(models.Model):
     """Customer order with frozen price snapshots, delivery, and billing details."""
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders',
+    )
     status = models.ForeignKey(OrderStatus, on_delete=models.PROTECT, related_name='orders')
     shipping_method = models.ForeignKey(ShippingMethod, on_delete=models.PROTECT)
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
@@ -211,7 +222,10 @@ class Order(models.Model):
         return f"Order #{self.id} - {self.customer_email}"
 
     def __repr__(self) -> str:
-        return f"<Order(id={self.id}, customer_email='{self.customer_email}', total_gross={self.total_price_gross})>"
+        return (
+            f"<Order(id={self.id}, customer_email='{self.customer_email}', "
+            f"total_gross={self.total_price_gross})>"
+        )
 
 
 # ===================== ORDER ITEM =====================
@@ -229,7 +243,10 @@ class OrderItem(models.Model):
         return f"{self.quantity}x {self.product.name} (Order #{self.order.id})"
 
     def __repr__(self) -> str:
-        return f"<OrderItem(id={self.id}, order_id={self.order_id}, product_id={self.product_id}, qty={self.quantity})>"
+        return (
+            f"<OrderItem(id={self.id}, order_id={self.order_id}, "
+            f"product_id={self.product_id}, qty={self.quantity})>"
+        )
 
 
 # ===================== QUOTE REQUEST =====================
@@ -258,14 +275,21 @@ class QuoteRequest(models.Model):
         return f"Poptávka #{self.id} – {self.first_name} {self.last_name} ({self.quantity} ks)"
 
     def __repr__(self) -> str:
-        return f"<QuoteRequest(id={self.id}, email='{self.email}', processed={self.processed})>"
+        return (
+            f"<QuoteRequest(id={self.id}, email='{self.email}', "
+            f"processed={self.processed})>"
+        )
 
 
 # ===================== PROFILE =====================
 class Profile(models.Model):
     """Extended user data (contact and address) linked to the built-in Django User."""
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profile',
+    )
     phone = models.CharField(max_length=50, blank=True)
     street = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=100, blank=True)
@@ -281,7 +305,9 @@ class Profile(models.Model):
 class CompanyBillingProfile(models.Model):
     """Optional company billing details saved for a customer's profile."""
 
-    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='company_billing')
+    profile = models.OneToOneField(
+        Profile, on_delete=models.CASCADE, related_name='company_billing'
+    )
     contact_first_name = models.CharField(max_length=100, blank=True)
     contact_last_name = models.CharField(max_length=100, blank=True)
     company_name = models.CharField(max_length=150)
@@ -317,18 +343,40 @@ def generate_invoice_pdf(order):
     if is_business:
         p.drawString(50, y, f"Dodavatel: Můj E-shop s.r.o.")
         y -= 20
-        p.drawString(50, y,
-                     f"Odběratel: {order.billing_company_name or ''}, {order.billing_street}, {order.billing_city}")
+        p.drawString(
+            50,
+            y,
+            f"Odběratel: {order.billing_company_name or ''}, "
+            f"{order.billing_street}, {order.billing_city}",
+        )
         y -= 20
-        p.drawString(50, y, f"IČO: {order.billing_ico or ''}, DIČ: {order.billing_dic or ''}")
+        p.drawString(
+            50,
+            y,
+            f"IČO: {order.billing_ico or ''}, DIČ: {order.billing_dic or ''}",
+        )
     else:
         p.drawString(50, y, f"Dodavatel: Můj E-shop s.r.o.")
         y -= 20
-        p.drawString(50, y,
-                     f"Odběratel: {order.shipping_first_name} {order.shipping_last_name}, {order.shipping_street}, {order.shipping_city}")
+        p.drawString(
+            50,
+            y,
+            f"Odběratel: {order.shipping_first_name} {order.shipping_last_name}, "
+            f"{order.shipping_street}, {order.shipping_city}",
+        )
     y -= 40
 
-    rows = [["Položka", "Počet", "Cena/ks bez DPH", "DPH", "Cena/ks s DPH", "Celkem bez DPH", "Celkem s DPH"]]
+    rows = [
+        [
+            "Položka",
+            "Počet",
+            "Cena/ks bez DPH",
+            "DPH",
+            "Cena/ks s DPH",
+            "Celkem bez DPH",
+            "Celkem s DPH",
+        ]
+    ]
 
     for item in order.items.all():
         rows.append([
@@ -401,7 +449,10 @@ def send_order_confirmation(sender, instance, created, **kwargs):
     filename_prefix = 'danovy_doklad' if is_business else 'zjednoduseny_danovy_doklad'
 
     subject = f'Potvrzení objednávky č. {instance.id}'
-    body = f'Děkujeme za objednávku. {document_label} k objednávce naleznete v příloze tohoto e-mailu.'
+    body = (
+        f'Děkujeme za objednávku. {document_label} '
+        f'k objednávce naleznete v příloze tohoto e-mailu.'
+    )
     email = EmailMessage(
         subject=subject,
         body=body,
@@ -410,6 +461,10 @@ def send_order_confirmation(sender, instance, created, **kwargs):
     )
 
     pdf = generate_invoice_pdf(instance)
-    email.attach(f'{filename_prefix}_{instance.id}.pdf', pdf, 'application/pdf')
+    email.attach(
+        f'{filename_prefix}_{instance.id}.pdf',
+        pdf,
+        'application/pdf',
+    )
 
     email.send()

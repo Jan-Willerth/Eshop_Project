@@ -1,4 +1,4 @@
-/* ===================== 1. ZÁKLADNÍ NASTAVENÍ A TMAVÝ REŽIM ===================== */
+/* ===================== 1. BASIC SETUP AND DARK MODE ===================== */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -68,7 +68,7 @@ body {
     background-color: #381d1d;
 }
 
-/* ===================== 2. NAVIGACE (NAVBAR) ===================== */
+/* ===================== 2. NAVIGATION (NAVBAR) ===================== */
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -150,7 +150,7 @@ body {
     text-decoration: none;
 }
 
-/* ===================== 3. KATALOG PRODUKTŮ (MŘÍŽKA A KARTY) ===================== */
+/* ===================== 3. PRODUCT CATALOG (GRID & CARDS) ===================== */
 .catalog-title {
     margin-bottom: 20px;
     color: #ffffff;
@@ -233,7 +233,7 @@ body {
     font-size: 0.85rem;
 }
 
-/* ===================== 4. DETAIL PRODUKTU A FORMULÁŘE ===================== */
+/* ===================== 4. PRODUCT DETAIL AND FORMS ===================== */
 .product-detail, .auth-form, .cart-summary {
     background: linear-gradient(145deg, #383838, #303030);
     padding: 30px;
@@ -283,7 +283,7 @@ body {
     color: #b0b0b0;
 }
 
-/* ===================== 5. TABULKY A SHRNUTÍ ===================== */
+/* ===================== 5. TABLES AND SUMMARIES ===================== */
 
 .cart-table {
     width: 100%;
@@ -342,7 +342,7 @@ table,
     border: 1px solid #3b71ca !important;
 }
 
-/* ===================== 6. TLAČÍTKA A VSTUPNÍ POLE ===================== */
+/* ===================== 6. BUTTONS AND INPUT FIELDS ===================== */
 .btn-primary, a.btn-primary {
     background: linear-gradient(135deg, #1c7ed6, #228be6);
     color: white;
@@ -478,7 +478,7 @@ table,
     box-shadow: 0 4px 12px rgba(34, 139, 230, 0.5);
 }
 
-/* ===================== 7. OBSAH MODÁLNÍHO OKNA ===================== */
+/* ===================== 7. MODAL CONTENT ===================== */
 .modal-content {
     position: absolute;
     top: 50%;
@@ -517,7 +517,7 @@ table,
     text-decoration: none;
 }
 
-/* ===================== LOGO SE ZÁŘÍ ===================== */
+/* ===================== LOGO WITH GLOW ===================== */
 .brand-logo.custom-logo {
     display: inline-flex;
     align-items: center;

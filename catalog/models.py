@@ -319,8 +319,11 @@ class CompanyBillingProfile(models.Model):
 # ===================== SIGNALS =====================
 def generate_invoice_pdf(order):
     """Generate a tax document PDF for an order (full for business, simplified for consumers)."""
-    pdfmetrics.registerFont(TTFont('DejaVu', 'C:/Windows/Fonts/arial.ttf'))
-    pdfmetrics.registerFont(TTFont('DejaVu-Bold', 'C:/Windows/Fonts/arialbd.ttf'))
+    font_path_regular = os.path.join(settings.BASE_DIR, 'catalog', 'static', 'fonts', 'arial.ttf')
+    font_path_bold = os.path.join(settings.BASE_DIR, 'catalog', 'static', 'fonts', 'arialbd.ttf')
+
+    pdfmetrics.registerFont(TTFont('DejaVu', font_path_regular))
+    pdfmetrics.registerFont(TTFont('DejaVu-Bold', font_path_bold))
 
     cell_style = ParagraphStyle(name='CellStyle', fontName='DejaVu', fontSize=8, leading=10)
 

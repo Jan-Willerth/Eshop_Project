@@ -1,4 +1,5 @@
 import io
+import os
 from decimal import Decimal
 
 from django.conf import settings
@@ -13,6 +14,10 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
+
+
+font_path = os.path.join(settings.BASE_DIR, 'catalog', 'static', 'fonts', 'arial.ttf')
+pdfmetrics.registerFont(TTFont('Arial', font_path))
 
 
 # ===================== VAT RATE =====================

@@ -559,3 +559,41 @@ table,
     letter-spacing: 1px;
     color: #adb5bd;
 }
+
+/* ===================== RESPONSIVE NAVBAR (MOBILE FIX) ===================== */
+@media (max-width: 768px) {
+    .navbar {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .brand-logo {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        margin-bottom: 5px;
+    }
+
+    .nav-account {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .nav-cart {
+        width: 100%;
+        text-align: center;
+        margin-top: 5px;
+    }
+
+    .nav-cart .btn-cart {
+        display: inline-block;
+        width: 800px; /* případně max-width, aby košík hezky vyplnil prostor */
+        max-width: 250px;
+        box-sizing: border-box;
+        text-align: center;
+    }
+}

@@ -406,3 +406,48 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+// ===================== CHECKOUT CONFIRMATION MODAL =====================
+const btnTrigger = document.getElementById('btn-trigger-modal');
+const cartModal = document.getElementById('cart-modal');
+const modalProductName = document.getElementById('modal-product-name');
+const standardActions = document.getElementById('modal-actions-standard');
+const alertActions = document.getElementById('modal-actions-alert');
+
+if (btnTrigger && cartModal) {
+    btnTrigger.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        if (modalProductName) {
+            modalProductName.innerText = 'Opravdu chcete závazně vytvořit objednávku?';
+        }
+        if (standardActions) standardActions.style.display = 'none';
+        if (alertActions) {
+            alertActions.style.display = 'flex';
+            if (!document.getElementById('btn-modal-cancel')) {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.id = 'btn-modal-cancel';
+                cancelBtn.className = 'btn-secondary';
+                cancelBtn.textContent = 'Zrušit';
+                cancelBtn.addEventListener('click', function () {
+                    cartModal.style.display = 'none';
+                    if (standardActions) standardActions.style.display = 'flex';
+                    if (alertActions) alertActions.style.display = 'none';
+                });
+                alertActions.appendChild(cancelBtn);
+            }
+        }
+
+        cartModal.style.display = 'flex';
+    });
+}
+
+const btnModalOk = document.getElementById('btn-modal-ok');
+const confirmOrderForm = document.getElementById('confirm-order-form');
+
+if (btnModalOk && confirmOrderForm) {
+    btnModalOk.addEventListener('click', function () {
+        cartModal.style.display = 'none';
+        confirmOrderForm.submit();
+    });
+}

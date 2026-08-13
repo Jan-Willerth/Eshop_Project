@@ -79,9 +79,12 @@
 
     <form method="post" id="confirm-order-form">
         {% csrf_token %}
-       <button type="submit" class="btn-primary" onclick="return confirm('Opravdu chcete závazně vytvořit objednávku?');">
+        <button type="button" class="btn-primary" id="btn-trigger-modal">
             Dokončit objednávku
-       </button>
+        </button>
     </form>
+    
+</div>
+
 </div>
 {% endblock %}

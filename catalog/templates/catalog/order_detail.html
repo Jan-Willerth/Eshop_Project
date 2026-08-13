@@ -63,6 +63,6 @@
     <p><strong>Adresa:</strong> {{ order.billing_street }}, {{ order.billing_city }}, {{ order.billing_zip_code }}</p>
     {% endif %}
 
-    <p><a href="{% url 'catalog:order_invoice_download' order.id %}">Stáhnout doklad PDF</a></p>
+    <p><a href="{% url 'catalog:order_invoice_download' order.id %}" class="btn-primary">Stáhnout doklad PDF</a></p>
 </div>
 {% endblock %}

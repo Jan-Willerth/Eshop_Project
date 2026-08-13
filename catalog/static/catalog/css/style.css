@@ -170,7 +170,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: 0 4px 14px rgba(0, 123, 255, 0.2); /* Stínované modré orámování */
+    box-shadow: 0 4px 14px rgba(0, 123, 255, 0.2);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -591,9 +591,166 @@ table,
 
     .nav-cart .btn-cart {
         display: inline-block;
-        width: 800px; /* případně max-width, aby košík hezky vyplnil prostor */
+        width: 800px;
         max-width: 250px;
         box-sizing: border-box;
         text-align: center;
+    }
+}
+
+/* ===================== RESPONSIVE CART & TABLES FIX (MOBILE) ===================== */
+@media (max-width: 768px) {
+    .main-content,
+    .cart-detail,
+    .checkout,
+    .auth-form {
+        width: 100% !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+    }
+
+    table,
+    .cart-table,
+    thead,
+    tbody,
+    tr,
+    th,
+    td {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        white-space: normal !important;
+    }
+
+    thead {
+        display: none !important;
+    }
+
+    tr,
+    .cart-table tr.cart-item {
+        margin-bottom: 20px !important;
+        background: #353535 !important;
+        border: 1px solid #3b71ca !important;
+        border-radius: 8px !important;
+        padding: 15px 10px !important;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.15) !important;
+    }
+
+    td,
+    .cart-table tr.cart-item td {
+        text-align: center !important;
+        padding: 10px 5px !important;
+        border-bottom: 1px solid #444444 !important;
+    }
+
+    tr td:last-child,
+    .cart-table tr.cart-item td:last-child {
+        border-bottom: none !important;
+    }
+
+    .cart-table td:nth-child(3):before { content: "Cena za kus bez DPH: "; color: #b0b0b0; font-size: 0.85rem; display: block; margin-bottom: 3px; }
+    .cart-table td:nth-child(4):before { content: "DPH: "; color: #b0b0b0; font-size: 0.85rem; display: block; margin-bottom: 3px; }
+    .cart-table td:nth-child(5):before { content: "Cena za kus s DPH: "; color: #b0b0b0; font-size: 0.85rem; display: block; margin-bottom: 3px; }
+    .cart-table td:nth-child(6):before { content: "Celkem bez DPH: "; color: #b0b0b0; font-size: 0.85rem; display: block; margin-bottom: 3px; }
+    .cart-table td:nth-child(7):before { content: "Celkem s DPH: "; color: #b0b0b0; font-size: 0.85rem; display: block; margin-bottom: 3px; }
+
+    td .quantity-form {
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: auto !important;
+        margin: 5px auto !important;
+    }
+
+    td input[type="number"] {
+        width: 70px !important;
+        text-align: center !important;
+    }
+
+    td form,
+    td a.btn-primary,
+    td button {
+        display: inline-block !important;
+        margin: 5px auto !important;
+    }
+
+    .cart-summary {
+        max-width: 100% !important;
+        text-align: center !important;
+    }
+
+    .cart-actions {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .cart-actions .btn-primary {
+        width: 100% !important;
+        text-align: center !important;
+        box-sizing: border-box !important;
+    }
+
+    .modal-content {
+        width: 95% !important;
+        padding: 15px !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+}
+
+/* ===================== FINAL MOBILE TABLE ALIGNMENT FIX ===================== */
+@media (max-width: 768px) {
+    table th:first-child,
+    table td:first-child,
+    .cart-table th:first-child,
+    .cart-table td:first-child {
+        text-align: center !important;
+    }
+
+    tr,
+    .cart-table tr.cart-item {
+        border: 1px solid #3b71ca !important;
+        box-shadow: none !important;
+    }
+
+    td:last-child,
+    .cart-table tr.cart-item td:last-child {
+        border-bottom: none !important;
+        box-shadow: none !important;
+    }
+}
+
+/* ===================== REMOVE CARD SHADOW ON MOBILE ===================== */
+@media (max-width: 768px) {
+    tr,
+    .cart-table tr.cart-item {
+        box-shadow: none !important;
+        border: 1px solid #3b71ca !important;
+        background: #353535 !important;
+        margin-bottom: 20px !important;
+    }
+}
+
+/* ===================== CLEAN SINGLE CARD OVERLAP FIX ===================== */
+@media (max-width: 768px) {
+    table,
+    .cart-table,
+    tbody {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    tr,
+    .cart-table tr.cart-item {
+        display: block !important;
+        background: #353535 !important;
+        border: 1px solid #3b71ca !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.15) !important;
+        margin-bottom: 20px !important;
+        overflow: hidden !important;
     }
 }

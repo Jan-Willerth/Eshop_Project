@@ -7,9 +7,9 @@ using MySQL and production deployment on PythonAnywhere (SQLite).
 
 🚀 Key Features
 
-  • Product Catalog: Clear display of products divided into categories (PLA, PETG, ABS, etc.)
+  - Product Catalog: Clear display of products divided into categories (PLA, PETG, ABS, etc.)
     with detailed information and prices with/without VAT.
-  • Shopping Cart: Dynamic management of items in the cart with a quantity counter.
+  - Shopping Cart: Dynamic management of items in the cart with a quantity counter.
   • User System: Registration, login, profile management, and order history.
   • Responsive Design: Optimized layout for both desktop computers and mobile devices.
   • Smart Database Management: Automatic switching between local MySQL and server-side SQLite

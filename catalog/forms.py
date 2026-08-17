@@ -14,6 +14,103 @@ from .models import (
 )
 
 
+# ===================== MIXINS =====================
+class PhoneValidationMixin:
+    """Mixin to provide centralized Czech phone number validation and client-side attributes."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in ('phone', 'customer_phone'):
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs.update({
+                'inputmode': 'tel',
+                'pattern': r'(\d{3}\s*\d{3}\s*\d{3}|\+420\s*\d{3}\s*\d{3}\s*\d{3})',
+                'maxlength': '16',
+                'title': 'Zadejte platné telefonní číslo (9 číslic nebo +420 a 9 číslic).',
+            })
+
+    def validate_phone_value(self, phone_value: str) -> str:
+        """Validate that the phone number contains a valid format of digits/spaces/plus."""
+        if not phone_value:
+            return phone_value
+
+        phone_clean = phone_value.replace(' ', '')
+        if not re.fullmatch(r'(\d{9}|\+420\d{9})', phone_clean):
+            raise forms.ValidationError('Zadejte platné telefonní číslo (9 číslic nebo +420 a 9 číslic).')
+        return phone_value
+
+
+class ZipValidationMixin:
+    """Mixin to provide centralized Czech ZIP code validation and client-side attributes."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in ('zip_code', 'billing_zip_code', 'delivery_zip_code', 'customer_zip_code'):
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs.update({
+                    'inputmode': 'numeric',
+                    'pattern': r'\d{3}\s*\d{2}',
+                    'maxlength': '6',
+                    'title': 'Zadejte platné PSČ (5 číslic, např. 736 01).',
+                })
+
+    def validate_zip_value(self, zip_value: str) -> str:
+        """Validate that the ZIP code contains exactly 5 digits after removing spaces."""
+        if not zip_value:
+            return zip_value
+
+        zip_clean = zip_value.replace(' ', '')
+        if not re.fullmatch(r'\d{5}', zip_clean):
+            raise forms.ValidationError('Zadejte platné PSČ (přesně 5 číslic).')
+        return zip_clean
+
+
+class CompanyIdValidationMixin:
+    """Mixin for validating Czech IČO and DIČ including client-side attributes."""
+
+    ICO_FIELDS = ('ico', 'billing_ico')
+    DIC_FIELDS = ('dic', 'billing_dic')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        for field_name in self.ICO_FIELDS:
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs.update({
+                    'inputmode': 'numeric',
+                    'pattern': r'\d{8}',
+                    'maxlength': '8',
+                    'title': 'IČO musí obsahovat přesně 8 číslic.',
+                })
+
+        for field_name in self.DIC_FIELDS:
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs.update({
+                    'inputmode': 'text',
+                    'pattern': r'CZ\d{8,10}',
+                    'maxlength': '10',
+                    'title': 'DIČ musí být ve formátu CZ + 8 číslic.',
+                })
+
+    def validate_ico_value(self, ico_value: str) -> str:
+        if not ico_value:
+            return ico_value
+
+        ico_clean = ico_value.replace(' ', '')
+        if not re.fullmatch(r'\d{8}', ico_clean):
+            raise forms.ValidationError('IČO musí obsahovat přesně 8 číslic.')
+        return ico_clean
+
+    def validate_dic_value(self, dic_value: str) -> str:
+        if not dic_value:
+            return dic_value
+
+        dic_clean = dic_value.replace(' ', '').upper()
+        if not re.fullmatch(r'CZ\d{8,10}', dic_clean):
+            raise forms.ValidationError('DIČ musí být ve formátu CZ + 8 až 10 číslic.')
+        return dic_clean
+
+
 # ===================== CHOICE FIELDS =====================
 class ShippingMethodChoiceField(forms.ModelChoiceField):
     """ModelChoiceField that displays the gross price alongside the shipping
@@ -106,7 +203,7 @@ class CartAddProductForm(forms.Form):
 
 
 # ===================== QUOTE REQUEST FORMS =====================
-class QuoteRequestForm(forms.ModelForm):
+class QuoteRequestForm(PhoneValidationMixin, forms.ModelForm):
     """Form for submitting an individual quote request for bulk orders."""
 
     class Meta:
@@ -123,7 +220,6 @@ class QuoteRequestForm(forms.ModelForm):
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control'}),
         }
         labels = {
             'agreed_to_terms': (
@@ -139,13 +235,20 @@ class QuoteRequestForm(forms.ModelForm):
             raise forms.ValidationError("Neplatné množství.")
         return qty
 
+    def clean_phone(self) -> str:
+        return self.validate_phone_value(self.cleaned_data.get('phone'))
+
 
 # ===================== ORDER FORM =====================
-class OrderForm(forms.Form):
+class OrderForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValidationMixin, forms.Form):
     """Validate checkout, delivery-address choice, and payment limits."""
 
     customer_email = forms.EmailField(label='E-mail')
-    customer_phone = forms.CharField(max_length=50, label='Telefon')
+    customer_phone = forms.CharField(
+        max_length=50,
+        required=True,
+        label='Telefon',
+    )
     shipping_first_name = forms.CharField(max_length=100, required=False, label='Jméno')
     shipping_last_name = forms.CharField(max_length=100, required=False, label='Příjmení')
     shipping_street = forms.CharField(
@@ -201,11 +304,29 @@ class OrderForm(forms.Form):
         self.products_total_gross = products_total_gross
         self.is_registered = is_registered
 
+    def clean_customer_phone(self) -> str:
+        return self.validate_phone_value(self.cleaned_data.get('customer_phone'))
+
     def clean_shipping_first_name(self) -> str:
         return self.cleaned_data.get('shipping_first_name', '').strip().capitalize()
 
     def clean_shipping_last_name(self) -> str:
         return self.cleaned_data.get('shipping_last_name', '').strip().capitalize()
+
+    def clean_shipping_zip_code(self) -> str:
+        return self.validate_zip_value(self.cleaned_data.get('shipping_zip_code'))
+
+    def clean_billing_zip_code(self) -> str:
+        return self.validate_zip_value(self.cleaned_data.get('billing_zip_code'))
+
+    def clean_delivery_zip_code(self) -> str:
+        return self.validate_zip_value(self.cleaned_data.get('delivery_zip_code'))
+
+    def clean_billing_ico(self):
+        return self.validate_ico_value(self.cleaned_data.get('billing_ico'))
+
+    def clean_billing_dic(self):
+        return self.validate_dic_value(self.cleaned_data.get('billing_dic'))
 
     def clean(self):
         cleaned_data = super().clean()
@@ -221,9 +342,6 @@ class OrderForm(forms.Form):
             ):
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
-            billing_ico = cleaned_data.get('billing_ico')
-            if billing_ico and not re.fullmatch(r'\d{8}', billing_ico):
-                self.add_error('billing_ico', 'IČO musí obsahovat přesně 8 číslic.')
 
         billing_address_is_delivery = cleaned_data.get('billing_address_is_delivery')
         delivery_different = cleaned_data.get('delivery_different')
@@ -285,12 +403,11 @@ class OrderForm(forms.Form):
                     'payment_method',
                     f'Objednávky nad {payment_limit:.0f} Kč lze uhradit pouze platbou předem.',
                 )
-
         return cleaned_data
 
 
 # ===================== REGISTRATION FORM =====================
-class RegistrationForm(UserCreationForm):
+class RegistrationForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValidationMixin, UserCreationForm):
     """Registration form with optional company billing details."""
 
     email = forms.EmailField(required=True, label='E-mail')
@@ -313,12 +430,6 @@ class RegistrationForm(UserCreationForm):
         max_length=50,
         required=True,
         label='Telefon',
-        widget=forms.TextInput(attrs={
-            'inputmode': 'tel',
-            'pattern': r'\+?[0-9 ]{9,15}',
-            'maxlength': '15',
-            'title': 'Zadejte telefonní číslo (např. 732258910 nebo +420732258910).',
-        })
     )
     street = forms.CharField(max_length=255, required=True, label='Ulice a číslo popisné')
     city = forms.CharField(max_length=100, required=True, label='Město')
@@ -326,24 +437,12 @@ class RegistrationForm(UserCreationForm):
         max_length=20,
         required=True,
         label='PSČ',
-        widget=forms.TextInput(attrs={
-            'inputmode': 'numeric',
-            'pattern': r'\d{5}',
-            'maxlength': '5',
-            'title': 'PSČ musí obsahovat přesně 5 číslic (bez mezery).',
-        })
     )
-
     billing_different = forms.BooleanField(required=False, label="Chci fakturu na firmu")
     billing_first_name = forms.CharField(max_length=100, required=False, label='Jméno (kontaktní osoba)')
     billing_last_name = forms.CharField(max_length=100, required=False, label='Příjmení (kontaktní osoba)')
     billing_company_name = forms.CharField(max_length=150, required=False, label='Název firmy')
-    billing_ico = forms.CharField(
-        max_length=20,
-        required=False,
-        label='IČO',
-        widget=forms.TextInput(attrs={'pattern': r'\d{8}', 'maxlength': '8'}),
-    )
+    billing_ico = forms.CharField(max_length=20, required=False, label='IČO')
     billing_dic = forms.CharField(max_length=20, required=False, label='DIČ')
     billing_street = forms.CharField(
         max_length=255,
@@ -356,6 +455,9 @@ class RegistrationForm(UserCreationForm):
     class Meta:
         model = User
         fields = ['email', 'first_name', 'last_name', 'password1', 'password2']
+
+    def clean_phone(self) -> str:
+        return self.validate_phone_value(self.cleaned_data.get('phone'))
 
     def clean_email(self) -> str:
         """Ensure the email is unique across users."""
@@ -377,6 +479,18 @@ class RegistrationForm(UserCreationForm):
             )
         return password2
 
+    def clean_zip_code(self) -> str:
+        return self.validate_zip_value(self.cleaned_data.get('zip_code'))
+
+    def clean_billing_zip_code(self) -> str:
+        return self.validate_zip_value(self.cleaned_data.get('billing_zip_code'))
+
+    def clean_billing_ico(self):
+        return self.validate_ico_value(self.cleaned_data.get('billing_ico'))
+
+    def clean_billing_dic(self):
+        return self.validate_dic_value(self.cleaned_data.get('billing_dic'))
+
     def clean(self):
         """Require the same company invoice data as checkout when B2B is
         selected.
@@ -392,10 +506,6 @@ class RegistrationForm(UserCreationForm):
             ):
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
-
-            billing_ico = cleaned_data.get('billing_ico')
-            if billing_ico and not re.fullmatch(r'\d{8}', billing_ico):
-                self.add_error('billing_ico', 'IČO musí obsahovat přesně 8 číslic.')
         return cleaned_data
 
     def save(self, commit=True):
@@ -432,14 +542,18 @@ class RegistrationForm(UserCreationForm):
 
 
 # ===================== PROFILE FORM =====================
-class ProfileUpdateForm(forms.Form):
+class ProfileUpdateForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValidationMixin, forms.Form):
     """Update a customer's contact, delivery, and optional company billing
     data.
     """
 
     first_name = forms.CharField(max_length=100, label='Jméno')
     last_name = forms.CharField(max_length=100, label='Příjmení')
-    phone = forms.CharField(max_length=50, label='Telefon')
+    phone = forms.CharField(
+        max_length=50,
+        required=True,
+        label='Telefon',
+    )
     street = forms.CharField(max_length=255, label='Ulice a číslo popisné')
     city = forms.CharField(max_length=100, label='Město')
     zip_code = forms.CharField(max_length=20, label='PSČ')
@@ -458,6 +572,21 @@ class ProfileUpdateForm(forms.Form):
     billing_city = forms.CharField(max_length=100, required=False, label='Město (fakturační)')
     billing_zip_code = forms.CharField(max_length=20, required=False, label='PSČ (fakturační)')
 
+    def clean_phone(self) -> str:
+        return self.validate_phone_value(self.cleaned_data.get('phone'))
+
+    def clean_zip_code(self) -> str:
+        return self.validate_zip_value(self.cleaned_data.get('zip_code'))
+
+    def clean_billing_zip_code(self) -> str:
+        return self.validate_zip_value(self.cleaned_data.get('billing_zip_code'))
+
+    def clean_billing_ico(self):
+        return self.validate_ico_value(self.cleaned_data.get('billing_ico'))
+
+    def clean_billing_dic(self):
+        return self.validate_dic_value(self.cleaned_data.get('billing_dic'))
+
     def clean(self):
         cleaned_data = super().clean()
         if cleaned_data.get('billing_different'):
@@ -470,7 +599,4 @@ class ProfileUpdateForm(forms.Form):
             ):
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
-            billing_ico = cleaned_data.get('billing_ico')
-            if billing_ico and not re.fullmatch(r'\d{8}', billing_ico):
-                self.add_error('billing_ico', 'IČO musí obsahovat přesně 8 číslic.')
         return cleaned_data

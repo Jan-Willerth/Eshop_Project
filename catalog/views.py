@@ -554,13 +554,14 @@ def profile_update(request: HttpRequest) -> HttpResponse:
     company_billing = getattr(profile, 'company_billing', None)
 
     if request.method == 'POST':
-        form = ProfileUpdateForm(request.POST)
+        form = ProfileUpdateForm(request.POST, user=request.user)
         if form.is_valid():
             data = form.cleaned_data
             with transaction.atomic():
+                request.user.email = data['email']
                 request.user.first_name = data['first_name']
                 request.user.last_name = data['last_name']
-                request.user.save(update_fields=['first_name', 'last_name'])
+                request.user.save(update_fields=['first_name', 'last_name', 'email'])
 
                 profile.phone = data['phone']
                 profile.street = data['street']
@@ -589,6 +590,7 @@ def profile_update(request: HttpRequest) -> HttpResponse:
             return redirect('catalog:profile_update')
     else:
         initial = {
+            'email': request.user.email,
             'first_name': request.user.first_name,
             'last_name': request.user.last_name,
             'phone': profile.phone,
@@ -608,7 +610,7 @@ def profile_update(request: HttpRequest) -> HttpResponse:
                 'billing_city': company_billing.city,
                 'billing_zip_code': company_billing.zip_code,
             })
-        form = ProfileUpdateForm(initial=initial)
+        form = ProfileUpdateForm(initial=initial, user=request.user)
 
     return render(request, 'catalog/profile_update.html', {'form': form})
 

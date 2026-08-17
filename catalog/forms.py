@@ -23,11 +23,11 @@ class PhoneValidationMixin:
         for field_name in ('phone', 'customer_phone'):
             if field_name in self.fields:
                 self.fields[field_name].widget.attrs.update({
-                'inputmode': 'tel',
-                'pattern': r'(\d{3}\s*\d{3}\s*\d{3}|\+420\s*\d{3}\s*\d{3}\s*\d{3})',
-                'maxlength': '16',
-                'title': 'Zadejte platné telefonní číslo (9 číslic nebo +420 a 9 číslic).',
-            })
+                    'inputmode': 'tel',
+                    'pattern': r'(\d{3}\s*\d{3}\s*\d{3}|\+420\s*\d{3}\s*\d{3}\s*\d{3})',
+                    'maxlength': '16',
+                    'title': 'Zadejte platné telefonní číslo (9 číslic nebo +420 a 9 číslic).',
+                })
 
     def validate_phone_value(self, phone_value: str) -> str:
         """Validate that the phone number contains a valid format of digits/spaces/plus."""
@@ -36,7 +36,9 @@ class PhoneValidationMixin:
 
         phone_clean = phone_value.replace(' ', '')
         if not re.fullmatch(r'(\d{9}|\+420\d{9})', phone_clean):
-            raise forms.ValidationError('Zadejte platné telefonní číslo (9 číslic nebo +420 a 9 číslic).')
+            raise forms.ValidationError(
+                'Zadejte platné telefonní číslo (9 číslic nebo +420 a 9 číslic).'
+            )
         return phone_value
 
 
@@ -87,12 +89,13 @@ class CompanyIdValidationMixin:
             if field_name in self.fields:
                 self.fields[field_name].widget.attrs.update({
                     'inputmode': 'text',
-                    'pattern': r'CZ\d{8,10}',
+                    'pattern': r'CZ\d{8}',
                     'maxlength': '10',
                     'title': 'DIČ musí být ve formátu CZ + 8 číslic.',
                 })
 
     def validate_ico_value(self, ico_value: str) -> str:
+        """Validate that the value is a valid Czech IČO (8 digits)."""
         if not ico_value:
             return ico_value
 
@@ -102,29 +105,26 @@ class CompanyIdValidationMixin:
         return ico_clean
 
     def validate_dic_value(self, dic_value: str) -> str:
+        """Validate that the value is a valid Czech DIČ (CZ + 8 digits)."""
         if not dic_value:
             return dic_value
 
         dic_clean = dic_value.replace(' ', '').upper()
-        if not re.fullmatch(r'CZ\d{8,10}', dic_clean):
-            raise forms.ValidationError('DIČ musí být ve formátu CZ + 8 až 10 číslic.')
+        if not re.fullmatch(r'CZ\d{8}', dic_clean):
+            raise forms.ValidationError('DIČ musí být ve formátu CZ + 8 číslic.')
         return dic_clean
 
 
 # ===================== CHOICE FIELDS =====================
 class ShippingMethodChoiceField(forms.ModelChoiceField):
-    """ModelChoiceField that displays the gross price alongside the shipping
-    method name.
-    """
+    """ModelChoiceField that displays the gross price alongside the shipping method name."""
 
     def label_from_instance(self, obj):
         return f"{obj.name} — {obj.price_gross:.2f} Kč"
 
 
 class PaymentMethodChoiceField(forms.ModelChoiceField):
-    """ModelChoiceField that displays the gross price alongside the payment
-    method name.
-    """
+    """ModelChoiceField that displays the gross price alongside the payment method name."""
 
     def label_from_instance(self, obj):
         return f"{obj.name} — {obj.price_gross:.2f} Kč"
@@ -132,9 +132,7 @@ class PaymentMethodChoiceField(forms.ModelChoiceField):
 
 # ===================== CART FORMS =====================
 class CartAddProductForm(forms.Form):
-    """Validate product quantity and enforce overstock confirmation when
-    needed.
-    """
+    """Validate product quantity and enforce overstock confirmation when needed."""
 
     quantity = forms.CharField(
         max_length=3,
@@ -167,9 +165,7 @@ class CartAddProductForm(forms.Form):
         self.product_stock = product_stock
 
     def clean_quantity(self) -> int:
-        """Parse quantity from string input, defaulting to 1 for any invalid
-        value.
-        """
+        """Parse quantity from string input, defaulting to 1 for any invalid value."""
         raw = self.cleaned_data.get('quantity', '').strip()
         try:
             qty = int(raw)
@@ -186,9 +182,7 @@ class CartAddProductForm(forms.Form):
         return qty
 
     def clean(self):
-        """Require overstock confirmation when quantity exceeds available
-        stock.
-        """
+        """Require overstock confirmation when quantity exceeds available stock."""
         cleaned_data = super().clean()
         quantity = cleaned_data.get('quantity') or 0
         confirmed = cleaned_data.get('overstock_confirmed')
@@ -329,6 +323,7 @@ class OrderForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValidationMix
         return self.validate_dic_value(self.cleaned_data.get('billing_dic'))
 
     def clean(self):
+        """Cross-validate checkout fields and payment limits."""
         cleaned_data = super().clean()
         billing_different = cleaned_data.get('billing_different')
 
@@ -348,6 +343,7 @@ class OrderForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValidationMix
         cleaned_data['customer_street'] = cleaned_data.get('shipping_street')
         cleaned_data['customer_city'] = cleaned_data.get('shipping_city')
         cleaned_data['customer_zip_code'] = cleaned_data.get('shipping_zip_code')
+
         if billing_address_is_delivery and delivery_different:
             self.add_error(
                 'delivery_different',
@@ -403,6 +399,7 @@ class OrderForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValidationMix
                     'payment_method',
                     f'Objednávky nad {payment_limit:.0f} Kč lze uhradit pouze platbou předem.',
                 )
+
         return cleaned_data
 
 
@@ -461,15 +458,13 @@ class RegistrationForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValida
 
     def clean_email(self) -> str:
         """Ensure the email is unique across users."""
-        email = self.cleaned_data.get('email')
+        email = self.cleaned_data.get('email').lower()
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError('Uživatel s tímto e-mailem již existuje.')
         return email
 
     def clean_password2(self):
-        """Validate that both password fields match, using our Czech error
-        message.
-        """
+        """Validate that both password fields match, using our Czech error message."""
         password1 = self.cleaned_data.get('password1')
         password2 = self.cleaned_data.get('password2')
         if password1 and password2 and password1 != password2:
@@ -492,9 +487,7 @@ class RegistrationForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValida
         return self.validate_dic_value(self.cleaned_data.get('billing_dic'))
 
     def clean(self):
-        """Require the same company invoice data as checkout when B2B is
-        selected.
-        """
+        """Require the same company invoice data as checkout when B2B is selected."""
         cleaned_data = super().clean()
         if cleaned_data.get('billing_different'):
             for field_name in (
@@ -509,9 +502,7 @@ class RegistrationForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValida
         return cleaned_data
 
     def save(self, commit=True):
-        """Create the User with email as username, plus a linked Profile with
-        contact/address data.
-        """
+        """Create the User with email as username, plus a linked Profile with contact/address data."""
         user = super().save(commit=False)
         user.username = self.cleaned_data['email']
         user.email = self.cleaned_data['email']
@@ -543,10 +534,9 @@ class RegistrationForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValida
 
 # ===================== PROFILE FORM =====================
 class ProfileUpdateForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValidationMixin, forms.Form):
-    """Update a customer's contact, delivery, and optional company billing
-    data.
-    """
+    """Update a customer's contact, delivery, and optional company billing data."""
 
+    email = forms.EmailField(required=True, label='E-mail')
     first_name = forms.CharField(max_length=100, label='Jméno')
     last_name = forms.CharField(max_length=100, label='Příjmení')
     phone = forms.CharField(
@@ -572,6 +562,19 @@ class ProfileUpdateForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValid
     billing_city = forms.CharField(max_length=100, required=False, label='Město (fakturační)')
     billing_zip_code = forms.CharField(max_length=20, required=False, label='PSČ (fakturační)')
 
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email').lower()
+        qs = User.objects.filter(email=email)
+        if self.user:
+            qs = qs.exclude(pk=self.user.pk)
+        if qs.exists():
+            raise forms.ValidationError('Uživatel s tímto e-mailem již existuje.')
+        return email
+
     def clean_phone(self) -> str:
         return self.validate_phone_value(self.cleaned_data.get('phone'))
 
@@ -588,6 +591,7 @@ class ProfileUpdateForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValid
         return self.validate_dic_value(self.cleaned_data.get('billing_dic'))
 
     def clean(self):
+        """Require company invoice data when B2B is selected."""
         cleaned_data = super().clean()
         if cleaned_data.get('billing_different'):
             for field_name in (

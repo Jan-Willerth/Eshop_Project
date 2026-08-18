@@ -71,11 +71,11 @@ body {
 /* ===================== 2. NAVIGATION (NAVBAR) ===================== */
 .navbar {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 12px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
 .brand-logo {
@@ -87,10 +87,24 @@ body {
 
 .nav-account {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 10px;
-    width: 100%;
+    gap: 15px;
+    width: auto;
+}
+
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .nav-account {
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
 }
 
 .nav-account a {

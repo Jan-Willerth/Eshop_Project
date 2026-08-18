@@ -1137,6 +1137,7 @@ class ProfileUpdateViewTestCase(TestCase):
     def test_profile_update_creates_company_billing_profile(self):
         self.client.force_login(self.user)
         response = self.client.post(reverse('catalog:profile_update'), {
+            'email': self.user.email,
             'first_name': 'Jan',
             'last_name': 'Novák',
             'phone': '732123456',

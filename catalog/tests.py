@@ -9,6 +9,7 @@ from catalog.forms import OrderForm, ProductForm, RegistrationForm
 from catalog.models import (
     Category,
     Order,
+    OrderItem,
     OrderStatus,
     PaymentMethod,
     Product,
@@ -1585,12 +1586,71 @@ class ProductManagementViewsTestCase(TestCase):
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 25)
 
-    def test_product_delete_post_removes_product(self):
-        """POST deletes the product and redirects."""
+    def test_product_delete_post_deactivates_product(self):
+        """POST deactivates the product (soft delete) instead of removing it
+        from the database.
+        """
         self.client.login(username='sklad@example.com', password='SilneHeslo123')
 
         url = reverse('catalog:product_delete', args=[self.product.id])
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertFalse(Product.objects.filter(id=self.product.id).exists())
+        self.product.refresh_from_db()
+        self.assertFalse(self.product.is_active)
+        self.assertTrue(Product.objects.filter(id=self.product.id).exists())
+
+    def test_product_delete_post_handles_protected_product_gracefully(self):
+        """A product referenced by an existing order can't be hard-deleted;
+        deactivating it instead never raises an unhandled error.
+        """
+        self.client.login(username='sklad@example.com', password='SilneHeslo123')
+
+        vat_standard = self.vat_standard
+        shipping = ShippingMethod.objects.create(
+            name='Balík do ruky',
+            price_net=Decimal('99.00'),
+            vat_rate=vat_standard,
+            is_active=True,
+        )
+        payment = PaymentMethod.objects.create(
+            name='Platba kartou',
+            price_net=Decimal('0.00'),
+            vat_rate=vat_standard,
+            is_active=True,
+        )
+        status = OrderStatus.objects.create(code='new', name='Nová')
+        order = Order.objects.create(
+            status=status,
+            shipping_method=shipping,
+            payment_method=payment,
+            shipping_price_net=shipping.price_net,
+            shipping_vat_rate=vat_standard.rate,
+            payment_price_net=payment.price_net,
+            payment_price_gross=payment.price_gross,
+            payment_vat_rate=vat_standard.rate,
+            total_price_net=Decimal('450.00'),
+            total_price_gross=Decimal('544.50'),
+            customer_email='zakaznik@example.com',
+            customer_phone='+420123456789',
+            shipping_first_name='Jan',
+            shipping_last_name='Novák',
+            shipping_street='Hlavní 1',
+            shipping_city='Praha',
+            shipping_zip_code='11000',
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+            unit_price_net=self.product.price_net,
+            unit_price_gross=self.product.price_gross,
+            vat_rate=vat_standard.rate,
+        )
+
+        url = reverse('catalog:product_delete', args=[self.product.id])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.product.refresh_from_db()
+        self.assertFalse(self.product.is_active)

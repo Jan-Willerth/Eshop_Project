@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, ProtectedError
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -659,11 +659,16 @@ def product_update(request, pk):
 @login_required(login_url='catalog:login')
 @permission_required('catalog.delete_product', raise_exception=True)
 def product_delete(request, pk):
-    """Staff-only view for removing a product from the catalog."""
+    """Staff-only view for deactivating a product (soft delete). A hard
+    delete from the database is intentionally never performed here, since a
+    Product referenced by an existing OrderItem is protected and would raise
+    ProtectedError, and history/PDF invoices should stay intact either way.
+    """
     product = get_object_or_404(Product, pk=pk)
 
     if request.method == 'POST':
-        product.delete()
+        product.is_active = False
+        product.save()
         return redirect('catalog:product_list')
 
     return redirect('catalog:product_list')

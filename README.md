@@ -10,22 +10,30 @@ using MySQL and production deployment on PythonAnywhere (SQLite).
   - Product Catalog: Clear display of products divided into categories (PLA, PETG, ABS, etc.)
     with detailed information and prices with/without VAT.
   - Shopping Cart: Dynamic management of items in the cart with a quantity counter.
-  • User System: Registration, login, profile management, and order history.
-  • Responsive Design: Optimized layout for both desktop computers and mobile devices.
-  • Smart Database Management: Automatic switching between local MySQL and server-side SQLite
+  - User System: Registration, login, profile management, and order history.
+  - Responsive Design: Optimized layout for both desktop computers and mobile devices.
+  - Smart Database Management: Automatic switching between local MySQL and server-side SQLite
     depending on the environment.
-  • Test Fixtures: Included JSON data files for quick database seeding (category.json, product.json,
+  - Test Fixtures: Included JSON data files for quick database seeding (category.json, product.json,
     paymentmethod.json, shippingmethod.json, vatrate.json).
-  • Custom Management Commands: Includes a specialized script (import_product_images.py) to automate product image
+  - Custom Management Commands: Includes a specialized script (import_product_images.py) to automate product image
     imports and linking.
+
+
+## 📊 Database ER Diagram
+
+The following entity-relationship diagram illustrates the database architecture, including models for products,
+categories, orders, items, users, and shipping/payment methods:
+
+![ER Diagram](./assets/er_diagram.png)
 
 
 🛠️ Technologies Used
 
-  • Backend: Python, Django
-  • Database: MySQL (locally), SQLite (PythonAnywhere)
-  • Frontend: HTML5, CSS3 (flexbox, grid, media queries)
-  • Hosting / Deploy: PythonAnywhere, GitHub (Git version control)
+  - Backend: Python, Django
+  - Database: MySQL (locally), SQLite (PythonAnywhere)
+  - Frontend: HTML5, CSS3 (flexbox, grid, media queries)
+  - Hosting / Deploy: PythonAnywhere, GitHub (Git version control)
 
 
 ⚙️ Installation and Setup (Local Development)

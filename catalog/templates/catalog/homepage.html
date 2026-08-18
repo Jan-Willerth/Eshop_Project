@@ -5,21 +5,22 @@
 <div class="catalog-page">
     <h1 class="catalog-title">Kategorie</h1>
 
-    <div class="category-grid">
+    <div class="product-grid">
         {% for category in categories %}
-            <a href="{% url 'catalog:category_detail' slug=category.slug %}"
-               class="category-card">
-                {% if category.image %}
-                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
-                {% else %}
-                    <img src="https://placehold.co/300x200?text=Kategorie"
-                         alt="{{ category.name }} – obrázek není k dispozici"
-                         class="category-image">
-                {% endif %}
-                <h2>{{ category.name }}</h2>
-            </a>
+            <div class="product-card">
+                <a href="{% url 'catalog:category_detail' slug=category.slug %}" class="product-image-link">
+                    {% if category.image %}
+                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="product-image">
+                    {% else %}
+                        <img src="https://placehold.co/300x200?text=Kategorie" alt="Bez obrázku" class="product-image">
+                    {% endif %}
+                </a>
+                <h2 class="product-title">
+                    <a href="{% url 'catalog:category_detail' slug=category.slug %}">{{ category.name }}</a>
+                </h2>
+            </div>
         {% empty %}
-            <p class="no-products">Zatím zde nejsou žádné kategorie.</p>
+            <p>Zatím zde nejsou žádné kategorie.</p>
         {% endfor %}
     </div>
 </div>

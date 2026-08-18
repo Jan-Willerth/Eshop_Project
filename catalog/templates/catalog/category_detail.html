@@ -3,26 +3,28 @@
 
 {% block content %}
 <div class="catalog-page">
-    <nav aria-label="Drobková navigace">
-        <a href="{% url 'catalog:homepage' %}">Kategorie</a>
-        &rsaquo; {{ category.name }}
+    <nav aria-label="Drobková navigace" style="margin-bottom: 10px;">
+        <a href="{% url 'catalog:homepage' %}">Kategorie</a> &rsaquo; {{ category.name }}
     </nav>
 
     <h1 class="catalog-title">{{ category.name }}</h1>
 
-    <div class="category-grid">
+    <div class="product-grid">
         {% for subcategory in subcategories %}
-            <a href="{% url 'catalog:category_detail' slug=subcategory.slug %}"
-               class="category-card">
-                {% if subcategory.image %}
-                    <img src="{{ subcategory.image.url }}" alt="{{ subcategory.name }}" class="category-image">
-                {% else %}
-                    <img src="https://placehold.co/300x200?text=Kategorie"
-                         alt="{{ subcategory.name }} – obrázek není k dispozici"
-                         class="category-image">
-                {% endif %}
-                <h2>{{ subcategory.name }}</h2>
-            </a>
+            <div class="product-card">
+                <a href="{% url 'catalog:category_detail' slug=subcategory.slug %}" class="product-image-link">
+                    {% if subcategory.image %}
+                        <img src="{{ subcategory.image.url }}" alt="{{ subcategory.name }}" class="product-image">
+                    {% else %}
+                        <img src="https://placehold.co/300x200?text=Podkategorie" alt="Bez obrázku" class="product-image">
+                    {% endif %}
+                </a>
+                <h2 class="product-title">
+                    <a href="{% url 'catalog:category_detail' slug=subcategory.slug %}">{{ subcategory.name }}</a>
+                </h2>
+            </div>
+        {% empty %}
+            <p>V této kategorii nejsou žádné podkategorie.</p>
         {% endfor %}
     </div>
 </div>

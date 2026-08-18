@@ -108,6 +108,11 @@
         <a href="{% url 'catalog:product_list' %}" class="btn-primary">
             &larr; Zpět na katalog
         </a>
+        {% if perms.catalog.change_product %}
+        <a href="{% url 'catalog:product_update' product.id %}" class="btn-primary">
+            Upravit zboží
+        </a>
+        {% endif %}
     </footer>
 </article>
 {% endblock %}

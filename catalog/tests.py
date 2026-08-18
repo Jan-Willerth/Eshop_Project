@@ -1,11 +1,11 @@
 from decimal import Decimal
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, Permission, User
 from django.core import mail
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from catalog.forms import OrderForm, RegistrationForm
+from catalog.forms import OrderForm, ProductForm, RegistrationForm
 from catalog.models import (
     Category,
     Order,
@@ -1239,3 +1239,273 @@ class OrderHistoryTestCase(TestCase):
         orders = response.context['orders']
         self.assertEqual(list(orders), [self.order_a])
         self.assertNotIn(self.order_b, orders)
+
+
+# ===================== PRODUCT FORM TESTS =====================
+class ProductFormTestCase(TestCase):
+    """Test suite for the ProductForm used in the staff product-management
+    views.
+    """
+
+    def setUp(self):
+        self.vat_standard = VatRate.objects.create(
+            label='21%',
+            rate=Decimal('21.00'),
+            is_active=True,
+        )
+        self.category = Category.objects.create(
+            name='Filamenty',
+            slug='filamenty',
+            is_active=True,
+        )
+        self.valid_data = {
+            'name': 'Spectrum PLA – černá',
+            'slug': 'spectrum-pla-cerna',
+            'description': 'Kvalitní PLA filament.',
+            'category': self.category.id,
+            'vat_rate': self.vat_standard.id,
+            'price_net': '450.00',
+            'stock': 10,
+            'is_active': True,
+        }
+
+    def test_product_form_valid_data(self):
+        """A fully filled-in form with required fields is valid."""
+        form = ProductForm(data=self.valid_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_product_form_missing_name_invalid(self):
+        """Missing name is invalid."""
+        form_data = {**self.valid_data, 'name': ''}
+        form = ProductForm(data=form_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('name', form.errors)
+
+    def test_product_form_missing_category_invalid(self):
+        """Missing category is invalid."""
+        form_data = {**self.valid_data, 'category': ''}
+        form = ProductForm(data=form_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('category', form.errors)
+
+    def test_product_form_missing_vat_rate_invalid(self):
+        """Missing vat_rate is invalid."""
+        form_data = {**self.valid_data, 'vat_rate': ''}
+        form = ProductForm(data=form_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('vat_rate', form.errors)
+
+    def test_product_form_negative_price_invalid(self):
+        """Negative price_net is invalid."""
+        form_data = {**self.valid_data, 'price_net': '-50.00'}
+        form = ProductForm(data=form_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('price_net', form.errors)
+
+    def test_product_form_non_numeric_price_invalid(self):
+        """Non-numeric price_net is invalid."""
+        form_data = {**self.valid_data, 'price_net': 'abc'}
+        form = ProductForm(data=form_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('price_net', form.errors)
+
+    def test_product_form_negative_stock_invalid(self):
+        """Negative stock is invalid."""
+        form_data = {**self.valid_data, 'stock': -5}
+        form = ProductForm(data=form_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('stock', form.errors)
+
+    def test_product_form_non_numeric_stock_invalid(self):
+        """Non-numeric stock is invalid."""
+        form_data = {**self.valid_data, 'stock': 'abc'}
+        form = ProductForm(data=form_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('stock', form.errors)
+
+    def test_product_form_duplicate_slug_invalid(self):
+        """A slug already used by another product is invalid."""
+        Product.objects.create(
+            name='Existující produkt',
+            slug='spectrum-pla-cerna',
+            price_net=Decimal('300.00'),
+            vat_rate=self.vat_standard,
+            category=self.category,
+            stock=1,
+            is_active=True,
+        )
+        form = ProductForm(data=self.valid_data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('slug', form.errors)
+
+
+# ===================== PRODUCT MANAGEMENT VIEWS TESTS =====================
+class ProductManagementViewsTestCase(TestCase):
+    """Test suite for staff-only product create/update/delete views."""
+
+    def setUp(self):
+        self.vat_standard = VatRate.objects.create(
+            label='21%',
+            rate=Decimal('21.00'),
+            is_active=True,
+        )
+        self.category = Category.objects.create(
+            name='Filamenty',
+            slug='filamenty',
+            is_active=True,
+        )
+        self.product = Product.objects.create(
+            name='Spectrum PLA – bílá',
+            slug='spectrum-pla-bila',
+            price_net=Decimal('450.00'),
+            vat_rate=self.vat_standard,
+            category=self.category,
+            stock=5,
+            is_active=True,
+        )
+
+        warehouse_group = Group.objects.create(name='Skladníci')
+        warehouse_group.permissions.add(
+            *Permission.objects.filter(
+                content_type__app_label='catalog',
+                codename__in=['add_product', 'change_product', 'delete_product'],
+            )
+        )
+
+        self.warehouse_user = User.objects.create_user(
+            username='sklad@example.com',
+            email='sklad@example.com',
+            password='SilneHeslo123',
+        )
+        self.warehouse_user.groups.add(warehouse_group)
+
+        self.regular_user = User.objects.create_user(
+            username='zakaznik@example.com',
+            email='zakaznik@example.com',
+            password='SilneHeslo123',
+        )
+
+        self.valid_data = {
+            'name': 'Spectrum PETG – černá',
+            'slug': 'spectrum-petg-cerna',
+            'description': '',
+            'category': self.category.id,
+            'vat_rate': self.vat_standard.id,
+            'price_net': '520.00',
+            'stock': 8,
+            'is_active': True,
+        }
+
+    def test_product_create_anonymous_redirects_to_login(self):
+        """Anonymous user is redirected to the login page."""
+        url = reverse('catalog:product_create')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('catalog:login'), response.url)
+
+    def test_product_create_forbidden_without_permission(self):
+        """Logged-in user without warehouse permissions gets 403."""
+        self.client.login(username='zakaznik@example.com', password='SilneHeslo123')
+
+        url = reverse('catalog:product_create')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_product_update_forbidden_without_permission(self):
+        """Logged-in user without warehouse permissions gets 403 on update."""
+        self.client.login(username='zakaznik@example.com', password='SilneHeslo123')
+
+        url = reverse('catalog:product_update', args=[self.product.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_product_delete_forbidden_without_permission(self):
+        """Logged-in user without warehouse permissions gets 403 on delete."""
+        self.client.login(username='zakaznik@example.com', password='SilneHeslo123')
+
+        url = reverse('catalog:product_delete', args=[self.product.id])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_product_create_get_renders_form(self):
+        """Warehouse user gets the create form."""
+        self.client.login(username='sklad@example.com', password='SilneHeslo123')
+
+        url = reverse('catalog:product_create')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.context['form'], ProductForm)
+
+    def test_product_create_post_valid_creates_product(self):
+        """Valid POST creates a new product and redirects."""
+        self.client.login(username='sklad@example.com', password='SilneHeslo123')
+
+        url = reverse('catalog:product_create')
+        response = self.client.post(url, self.valid_data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            Product.objects.filter(slug='spectrum-petg-cerna').exists()
+        )
+
+    def test_product_create_post_invalid_rerenders_with_errors(self):
+        """Invalid POST re-renders the form with errors, status 200."""
+        self.client.login(username='sklad@example.com', password='SilneHeslo123')
+
+        invalid_data = {**self.valid_data, 'name': ''}
+        url = reverse('catalog:product_create')
+        response = self.client.post(url, invalid_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['form'].is_valid())
+        self.assertIn('name', response.context['form'].errors)
+
+    def test_product_update_get_prefills_form(self):
+        """Update view pre-fills the form with the existing product data."""
+        self.client.login(username='sklad@example.com', password='SilneHeslo123')
+
+        url = reverse('catalog:product_update', args=[self.product.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['form'].instance, self.product)
+
+    def test_product_update_post_updates_stock(self):
+        """Valid POST updates the product's stock quantity."""
+        self.client.login(username='sklad@example.com', password='SilneHeslo123')
+
+        updated_data = {
+            **self.valid_data,
+            'name': self.product.name,
+            'slug': self.product.slug,
+            'stock': 25,
+        }
+        url = reverse('catalog:product_update', args=[self.product.id])
+        response = self.client.post(url, updated_data)
+
+        self.assertEqual(response.status_code, 302)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 25)
+
+    def test_product_delete_post_removes_product(self):
+        """POST deletes the product and redirects."""
+        self.client.login(username='sklad@example.com', password='SilneHeslo123')
+
+        url = reverse('catalog:product_delete', args=[self.product.id])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Product.objects.filter(id=self.product.id).exists())

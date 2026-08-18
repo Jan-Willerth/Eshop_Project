@@ -10,6 +10,11 @@ urlpatterns = [
     path('', views.product_list, name='product_list'),
     path('product/<slug:slug>/', views.product_detail, name='product_detail'),
 
+    # =========== PRODUCT MANAGEMENT (STAFF) ============
+    path('sklad/pridat/', views.product_create, name='product_create'),
+    path('sklad/<int:pk>/upravit/', views.product_update, name='product_update'),
+    path('sklad/<int:pk>/smazat/', views.product_delete, name='product_delete'),
+
     # ===================== CART =====================
     path('cart/add/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
     path('cart/remove/<int:product_id>/', views.cart_remove, name='cart_remove'),

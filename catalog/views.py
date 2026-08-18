@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth import login as auth_login
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.db.models import F
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -18,6 +18,7 @@ from .forms import (
     ProfileUpdateForm,
     QuoteRequestForm,
     RegistrationForm,
+    ProductForm
 )
 from .models import (
     Category,
@@ -620,3 +621,49 @@ def order_history(request: HttpRequest) -> HttpResponse:
     """Display the logged-in user's own order history."""
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     return render(request, 'catalog/order_history.html', {'orders': orders})
+
+
+# ===================== PRODUCT MANAGEMENT (STAFF) =====================
+@login_required(login_url='catalog:login')
+@permission_required('catalog.add_product', raise_exception=True)
+def product_create(request):
+    """Staff-only view for adding a new product to the catalog."""
+    if request.method == 'POST':
+        form = ProductForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('catalog:product_list')
+    else:
+        form = ProductForm()
+
+    return render(request, 'catalog/product_form.html', {'form': form})
+
+
+@login_required(login_url='catalog:login')
+@permission_required('catalog.change_product', raise_exception=True)
+def product_update(request, pk):
+    """Staff-only view for editing a product, including its stock quantity."""
+    product = get_object_or_404(Product, pk=pk)
+
+    if request.method == 'POST':
+        form = ProductForm(request.POST, request.FILES, instance=product)
+        if form.is_valid():
+            form.save()
+            return redirect('catalog:product_list')
+    else:
+        form = ProductForm(instance=product)
+
+    return render(request, 'catalog/product_form.html', {'form': form, 'product': product})
+
+
+@login_required(login_url='catalog:login')
+@permission_required('catalog.delete_product', raise_exception=True)
+def product_delete(request, pk):
+    """Staff-only view for removing a product from the catalog."""
+    product = get_object_or_404(Product, pk=pk)
+
+    if request.method == 'POST':
+        product.delete()
+        return redirect('catalog:product_list')
+
+    return redirect('catalog:product_list')

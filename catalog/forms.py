@@ -11,6 +11,7 @@ from .models import (
     Profile,
     QuoteRequest,
     ShippingMethod,
+    Product
 )
 
 
@@ -604,3 +605,62 @@ class ProfileUpdateForm(PhoneValidationMixin, ZipValidationMixin, CompanyIdValid
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, 'Toto pole je povinné pro fakturu na firmu.')
         return cleaned_data
+
+
+# ===================== PRODUCT FORM =====================
+class ProductForm(forms.ModelForm):
+    """ModelForm for creating and editing products including pricing, stock, and dimensions."""
+    class Meta:
+        model = Product
+        fields = [
+            'name',
+            'slug',
+            'description',
+            'category',
+            'vat_rate',
+            'price_net',
+            'stock',
+            'is_active',
+            'image',
+            'package_weight',
+            'package_height',
+            'package_width',
+            'package_length',
+            'product_weight',
+            'product_height',
+            'product_width',
+            'product_length',
+        ]
+        labels = {
+            'name': 'Název',
+            'slug': 'Slug (URL identifikátor)',
+            'description': 'Popis',
+            'category': 'Kategorie',
+            'vat_rate': 'Sazba DPH',
+            'price_net': 'Cena bez DPH',
+            'stock': 'Skladem (ks)',
+            'is_active': 'Aktivní',
+            'image': 'Obrázek',
+            'package_weight': 'Hmotnost balíku (g)',
+            'package_height': 'Výška balíku (mm)',
+            'package_width': 'Šířka balíku (mm)',
+            'package_length': 'Délka balíku (mm)',
+            'product_weight': 'Hmotnost produktu (g)',
+            'product_height': 'Výška produktu (mm)',
+            'product_width': 'Šířka produktu (mm)',
+            'product_length': 'Délka produktu (mm)',
+        }
+
+    def clean_price_net(self):
+        """Reject a negative net price."""
+        price_net = self.cleaned_data.get('price_net')
+        if price_net is not None and price_net < 0:
+            raise forms.ValidationError('Cena bez DPH nemůže být záporná.')
+        return price_net
+
+    def clean_stock(self):
+        """Reject a negative stock quantity."""
+        stock = self.cleaned_data.get('stock')
+        if stock is not None and stock < 0:
+            raise forms.ValidationError('Skladové množství nemůže být záporné.')
+        return stock

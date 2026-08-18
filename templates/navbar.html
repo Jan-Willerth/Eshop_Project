@@ -14,6 +14,9 @@
            <span class="nav-greeting">Ahoj, {{ user.first_name|default:user.email }}</span>
            <a href="{% url 'catalog:profile_update' %}" class="btn-primary">Můj profil</a>
            <a href="{% url 'catalog:order_history' %}" class="btn-primary">Moje objednávky</a>
+         {% if perms.catalog.add_product %}
+           <a href="{% url 'catalog:product_create' %}" class="btn-primary">Přidat zboží</a>
+         {% endif %}
            <form action="{% url 'catalog:logout' %}" method="post" class="logout-form" style="display: inline;">
                {% csrf_token %}
                <button type="submit" class="nav-logout-btn">Odhlásit se</button>

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if product %}Upravit zboží{% else %}Přidat zboží{% endif %} | E-shop{% endblock %}
+
+{% block content %}
+<div class="product-form">
+    <h1>{% if product %}Upravit zboží: {{ product.name }}{% else %}Přidat nové zboží{% endif %}</h1>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn-primary">
+            {% if product %}Uložit změny{% else %}Přidat zboží{% endif %}
+        </button>
+    </form>
+
+    {% if product %}
+    <form method="post" action="{% url 'catalog:product_delete' product.id %}"
+          onsubmit="return confirm('Opravdu chceš toto zboží trvale smazat?');">
+        {% csrf_token %}
+        <button type="submit" class="btn-danger">Smazat zboží</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

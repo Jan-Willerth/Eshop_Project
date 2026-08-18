@@ -1,6 +1,6 @@
 {# ---------- MAIN NAVIGATION ---------- #}
 <nav class="navbar" style="display: flex; justify-content: space-between; align-items: center;">
-    <a href="{% url 'catalog:product_list' %}" class="brand-logo custom-logo">
+    <a href="{% url 'catalog:homepage' %}" class="brand-logo custom-logo">
         <span class="logo-3">3</span>
         <span class="logo-stack">
             <span class="logo-print">PRINT</span>
@@ -8,6 +8,7 @@
         </span>
         <span class="logo-d">D</span>
     </a>
+    <a href="{% url 'catalog:product_list' %}" class="nav-link">Produkty</a>
 
      <div class="nav-account">
        {% if user.is_authenticated %}

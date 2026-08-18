@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Kategorie | E-shop{% endblock %}
+
+{% block content %}
+<div class="catalog-page">
+    <h1 class="catalog-title">Kategorie</h1>
+
+    <div class="category-grid">
+        {% for category in categories %}
+            <a href="{% url 'catalog:category_detail' slug=category.slug %}"
+               class="category-card">
+                <h2>{{ category.name }}</h2>
+            </a>
+        {% empty %}
+            <p class="no-products">Zatím zde nejsou žádné kategorie.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

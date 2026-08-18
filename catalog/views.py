@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
-from django.db.models import F, ProtectedError
+from django.db.models import F
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -35,6 +35,12 @@ from .models import (
 
 
 # ===================== CATALOG VIEWS =====================
+def homepage(request):
+    """Homepage showing top-level product categories."""
+    categories = Category.objects.filter(parent=None, is_active=True)
+    return render(request, 'catalog/homepage.html', {'categories': categories})
+
+
 def product_list(request: HttpRequest) -> HttpResponse:
     """Render the product catalog. Staff with change permission also
     see inactive products so they can reactivate them.
@@ -52,6 +58,37 @@ def product_list(request: HttpRequest) -> HttpResponse:
     return render(request, 'catalog/product_list.html', {
         'products': products,
         'categories': categories,
+    })
+
+
+def category_detail(request, slug):
+    """Display subcategories of the selected category, or products
+    if the category has no subcategories.
+    """
+    category = get_object_or_404(Category, slug=slug, is_active=True)
+
+    subcategories = category.subcategories.filter(is_active=True)
+
+    if subcategories.exists():
+        return render(request, 'catalog/category_detail.html', {
+            'category': category,
+            'subcategories': subcategories,
+        })
+
+    if request.user.has_perm('catalog.change_product'):
+        products = (
+            Product.objects.filter(category=category)
+            .select_related('vat_rate', 'category__parent')
+        )
+    else:
+        products = (
+            Product.objects.filter(category=category, is_active=True)
+            .select_related('vat_rate', 'category__parent')
+        )
+
+    return render(request, 'catalog/product_list.html', {
+        'products': products,
+        'category': category,
     })
 
 
@@ -89,7 +126,7 @@ def custom_quote(request: HttpRequest) -> HttpResponse:
                 request,
                 'Vaše poptávka byla odeslána. Budeme vás kontaktovat.',
             )
-            return redirect('catalog:product_list')
+            return redirect('catalog:homepage')
     else:
         form = QuoteRequestForm(initial=initial)
 
@@ -545,7 +582,7 @@ def register(request: HttpRequest) -> HttpResponse:
                 request,
                 'Registrace proběhla úspěšně, jste přihlášeni.',
             )
-            return redirect('catalog:product_list')
+            return redirect('catalog:homepage')
     else:
         form = RegistrationForm()
 
@@ -636,7 +673,7 @@ def product_create(request):
         form = ProductForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            return redirect('catalog:product_list')
+            return redirect('catalog:homepage')
     else:
         form = ProductForm()
 
@@ -653,7 +690,7 @@ def product_update(request, pk):
         form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
             form.save()
-            return redirect('catalog:product_list')
+            return redirect('catalog:homepage')
     else:
         form = ProductForm(instance=product)
 
@@ -662,6 +699,7 @@ def product_update(request, pk):
 
 @login_required(login_url='catalog:login')
 @permission_required('catalog.delete_product', raise_exception=True)
+@require_POST
 def product_delete(request, pk):
     """Staff-only view for deactivating a product (soft delete). A hard
     delete from the database is intentionally never performed here, since a
@@ -669,10 +707,6 @@ def product_delete(request, pk):
     ProtectedError, and history/PDF invoices should stay intact either way.
     """
     product = get_object_or_404(Product, pk=pk)
-
-    if request.method == 'POST':
-        product.is_active = False
-        product.save()
-        return redirect('catalog:product_list')
-
-    return redirect('catalog:product_list')
+    product.is_active = False
+    product.save()
+    return redirect('catalog:homepage')

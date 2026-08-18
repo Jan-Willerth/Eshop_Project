@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}{{ category.name }} | E-shop{% endblock %}
+
+{% block content %}
+<div class="catalog-page">
+    <nav aria-label="Drobková navigace">
+        <a href="{% url 'catalog:homepage' %}">Kategorie</a>
+        &rsaquo; {{ category.name }}
+    </nav>
+
+    <h1 class="catalog-title">{{ category.name }}</h1>
+
+    <div class="category-grid">
+        {% for subcategory in subcategories %}
+            <a href="{% url 'catalog:category_detail' slug=subcategory.slug %}"
+               class="category-card">
+                <h2>{{ subcategory.name }}</h2>
+            </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

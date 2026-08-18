@@ -16,7 +16,7 @@
 
     {% if product %}
     <form method="post" action="{% url 'catalog:product_delete' product.id %}"
-          onsubmit="return confirm('Opravdu chceš toto zboží trvale smazat?');">
+          onsubmit="return confirm('Opravdu chcete toto zboží smazat?');">
         {% csrf_token %}
         <button type="submit" class="btn-danger">Smazat zboží</button>
     </form>

@@ -7,7 +7,9 @@ app_name = 'catalog'
 
 urlpatterns = [
     # ===================== CATALOG =====================
-    path('', views.product_list, name='product_list'),
+    path('', views.homepage, name='homepage'),
+    path('products/', views.product_list, name='product_list'),
+    path('kategorie/<slug:slug>/', views.category_detail, name='category_detail'),
     path('product/<slug:slug>/', views.product_detail, name='product_detail'),
 
     # =========== PRODUCT MANAGEMENT (STAFF) ============

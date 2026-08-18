@@ -10,6 +10,11 @@
         {% for product in products %}
             <article class="product-card">
 
+                {# ---------- BADGE FOR NON ACTIVES (only for warhousemen) ---------- #}
+                {% if not product.is_active and perms.catalog.change_product %}
+                    <span class="badge badge-secondary">Neaktivní</span>
+                {% endif %}
+
                  {# ---------- IMAGE ---------- #}
                 <a href="{% url 'catalog:product_detail' slug=product.slug %}" class="product-image-link">
                     {% if product.image %}
@@ -54,14 +59,16 @@
                 </div>
 
                 {# ---------- ACTIONS ---------- #}
-                <div>
-                    <form action="{% url 'catalog:add_to_cart' product.id %}"
-                          method="post"
-                          class="add-to-cart-form">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-primary">Do košíku</button>
-                    </form>
-                </div>
+                {% if product.is_active %}
+                    <div>
+                        <form action="{% url 'catalog:add_to_cart' product.id %}"
+                              method="post"
+                              class="add-to-cart-form">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-primary">Do košíku</button>
+                        </form>
+                    </div>
+                {% endif %}
             </article>
         {% empty %}
             <p class="no-products">Zatím zde nejsou žádné produkty.</p>

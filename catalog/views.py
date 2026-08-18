@@ -36,13 +36,17 @@ from .models import (
 
 # ===================== CATALOG VIEWS =====================
 def product_list(request: HttpRequest) -> HttpResponse:
-    """Render the active product catalog with optimized category
-    prefetching.
+    """Render the product catalog. Staff with change permission also
+    see inactive products so they can reactivate them.
     """
-    products = (
-        Product.objects.filter(is_active=True)
-        .select_related('vat_rate', 'category__parent')
-    )
+    if request.user.has_perm('catalog.change_product'):
+        products = Product.objects.select_related('vat_rate', 'category__parent')
+    else:
+        products = (
+            Product.objects.filter(is_active=True)
+            .select_related('vat_rate', 'category__parent')
+        )
+
     categories = Category.objects.filter(is_active=True).select_related('parent')
 
     return render(request, 'catalog/product_list.html', {

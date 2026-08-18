@@ -231,6 +231,13 @@ class QuoteRequestForm(PhoneValidationMixin, forms.ModelForm):
             raise forms.ValidationError("Neplatné množství.")
         return qty
 
+    def clean_product(self):
+        """Validate that the selected product is still active."""
+        product = self.cleaned_data.get('product')
+        if product and not product.is_active:
+            raise forms.ValidationError('Vybraný produkt není dostupný.')
+        return product
+
     def clean_phone(self) -> str:
         return self.validate_phone_value(self.cleaned_data.get('phone'))
 

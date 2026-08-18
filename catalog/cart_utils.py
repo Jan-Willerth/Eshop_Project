@@ -63,7 +63,7 @@ def cart_has_unconfirmed_overstock(cart: Dict[str, Any]) -> bool:
     overstock confirmation.
     """
     product_ids = [int(pid) for pid in cart.keys() if pid.isdigit()]
-    products_dict = {p.id: p for p in Product.objects.filter(id__in=product_ids)}
+    products_dict = {p.id: p for p in Product.objects.filter(id__in=product_ids, is_active=True)}
 
     for product_id_str, entry in cart.items():
         if not product_id_str.isdigit():

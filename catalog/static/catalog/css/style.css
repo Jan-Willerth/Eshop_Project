@@ -573,7 +573,7 @@ table,
     text-decoration: none;
 }
 
-/* ===================== LOGO WITH GLOW ===================== */
+/* ===================== 8. LOGO WITH GLOW ===================== */
 .brand-logo.custom-logo {
     display: inline-flex;
     align-items: center;
@@ -616,7 +616,7 @@ table,
     color: #adb5bd;
 }
 
-/* ===================== RESPONSIVE NAVBAR (MOBILE FIX) ===================== */
+/* ===================== 9. RESPONSIVE NAVBAR (MOBILE FIX) ===================== */
 @media (max-width: 768px) {
     .navbar {
         flex-wrap: wrap;
@@ -654,7 +654,7 @@ table,
     }
 }
 
-/* ===================== RESPONSIVE CART & TABLES FIX (MOBILE) ===================== */
+/* ===================== 10. RESPONSIVE CART & TABLES FIX (MOBILE) ===================== */
 @media (max-width: 768px) {
     .product-form,
     .main-content,
@@ -757,7 +757,20 @@ table,
     }
 }
 
-/* ===================== FINAL MOBILE TABLE ALIGNMENT FIX ===================== */
+.cart-item-quantity input[type="number"] {
+    width: 75px;
+    border: 1px solid #3b82f6;
+    border-radius: 4px;
+    background-color: transparent;
+}
+
+.cart-item-quantity input[type="number"]:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* ===================== 11. FINAL MOBILE TABLE ALIGNMENT FIX ===================== */
 @media (max-width: 768px) {
     table th:first-child,
     table td:first-child,
@@ -779,7 +792,7 @@ table,
     }
 }
 
-/* ===================== REMOVE CARD SHADOW ON MOBILE ===================== */
+/* ===================== 12. REMOVE CARD SHADOW ON MOBILE ===================== */
 @media (max-width: 768px) {
     tr,
     .cart-table tr.cart-item {
@@ -790,7 +803,7 @@ table,
     }
 }
 
-/* ===================== CLEAN SINGLE CARD OVERLAP FIX ===================== */
+/* ===================== 13. CLEAN SINGLE CARD OVERLAP FIX ===================== */
 @media (max-width: 768px) {
     table,
     .cart-table,
@@ -812,7 +825,7 @@ table,
     }
 }
 
-/* ===================== FILE FIELD ===================== */
+/* ===================== 14. FILE FIELD ===================== */
 .product-form input[type="file"]::file-selector-button,
 .auth-form input[type="file"]::file-selector-button {
     background: linear-gradient(135deg, #1c7ed6, #228be6);

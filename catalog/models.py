@@ -63,7 +63,8 @@ class Category(models.Model):
         blank=True,
         related_name='subcategories',
     )
-
+    image = models.ImageField(upload_to='categories/', blank=True, null=True)
+    
     class Meta:
         verbose_name_plural = 'Categories'
 

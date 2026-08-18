@@ -14,6 +14,13 @@
         {% for subcategory in subcategories %}
             <a href="{% url 'catalog:category_detail' slug=subcategory.slug %}"
                class="category-card">
+                {% if subcategory.image %}
+                    <img src="{{ subcategory.image.url }}" alt="{{ subcategory.name }}" class="category-image">
+                {% else %}
+                    <img src="https://placehold.co/300x200?text=Kategorie"
+                         alt="{{ subcategory.name }} – obrázek není k dispozici"
+                         class="category-image">
+                {% endif %}
                 <h2>{{ subcategory.name }}</h2>
             </a>
         {% endfor %}

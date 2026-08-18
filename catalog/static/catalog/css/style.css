@@ -71,10 +71,11 @@ body {
 /* ===================== 2. NAVIGATION (NAVBAR) ===================== */
 .navbar {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    max-width: 1200px;
-    margin: 0 auto;
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
 }
 
 .brand-logo {
@@ -86,9 +87,10 @@ body {
 
 .nav-account {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 15px;
-    font-size: 14px;
+    gap: 10px;
+    width: 100%;
 }
 
 .nav-account a {
@@ -152,6 +154,7 @@ body {
 
 /* ===================== 3. PRODUCT CATALOG (GRID & CARDS) ===================== */
 .catalog-title {
+    text-align: center;
     margin-bottom: 20px;
     color: #ffffff;
 }
@@ -234,7 +237,7 @@ body {
 }
 
 /* ===================== 4. PRODUCT DETAIL AND FORMS ===================== */
-.product-detail, .auth-form, .cart-summary {
+.product-form,.product-detail, .auth-form, .cart-summary {
     background: linear-gradient(145deg, #383838, #303030);
     padding: 30px;
     border-radius: 8px;
@@ -281,6 +284,33 @@ body {
 .parameter-list dd {
     margin: 0;
     color: #b0b0b0;
+}
+
+.product-form,
+.product-form label,
+.product-form input,
+.product-form select,
+.product-form textarea,
+.product-form button {
+    font-family: inherit;
+}
+
+.product-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #e9ecef;
+}
+
+.product-form a {
+    color: #ffffff;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.product-form a:hover {
+    color: #228be6;
+    text-decoration: underline;
 }
 
 /* ===================== 5. TABLES AND SUMMARIES ===================== */
@@ -376,6 +406,7 @@ table,
     background-color: #343a40;
 }
 
+.product-form,
 .auth-form,
 .checkout,
 .quote-form,
@@ -390,6 +421,7 @@ table,
     color: #ffffff;
 }
 
+.product-form
 .auth-form form p,
 .checkout form p,
 .quote-form form p,
@@ -401,6 +433,12 @@ table,
     margin-bottom: 15px;
 }
 
+.product-form input[type="text"],
+.product-form input[type="email"],
+.product-form input[type="password"],
+.product-form input[type="number"],
+.product-form select,
+.product-form textarea,
 .auth-form input[type="text"],
 .auth-form input[type="email"],
 .auth-form input[type="password"],
@@ -436,6 +474,9 @@ table,
     width: 100%;
 }
 
+.product-form input:focus,
+.product-form select:focus,
+.product-form textarea:focus,
 .auth-form input:focus,
 .auth-form select:focus,
 .auth-form textarea:focus,
@@ -454,6 +495,7 @@ table,
     box-shadow: 0 0 6px rgba(34, 139, 230, 0.6);
 }
 
+.product-form button[type="submit"],
 .auth-form button[type="submit"],
 .checkout button[type="submit"],
 .quote-form button[type="submit"],
@@ -600,6 +642,7 @@ table,
 
 /* ===================== RESPONSIVE CART & TABLES FIX (MOBILE) ===================== */
 @media (max-width: 768px) {
+    .product-form,
     .main-content,
     .cart-detail,
     .checkout,
@@ -753,4 +796,25 @@ table,
         margin-bottom: 20px !important;
         overflow: hidden !important;
     }
+}
+
+/* ===================== FILE FIELD ===================== */
+.product-form input[type="file"]::file-selector-button,
+.auth-form input[type="file"]::file-selector-button {
+    background: linear-gradient(135deg, #1c7ed6, #228be6);
+    color: #ffffff;
+    border: 1px solid #4dabf7;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(34, 139, 230, 0.2);
+    transition: background 0.2s;
+}
+
+.product-form input[type="file"]::file-selector-button:hover,
+.auth-form input[type="file"]::file-selector-button:hover {
+    background: linear-gradient(135deg, #1864ab, #1c7ed6);
+    box-shadow: 0 4px 8px rgba(34, 139, 230, 0.4);
 }

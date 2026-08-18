@@ -201,6 +201,18 @@ class CartAddProductForm(forms.Form):
 # ===================== QUOTE REQUEST FORMS =====================
 class QuoteRequestForm(PhoneValidationMixin, forms.ModelForm):
     """Form for submitting an individual quote request for bulk orders."""
+    agreed_to_terms = forms.BooleanField(
+        label=(
+            'Souhlasím s tím, že se na tuto objednávku nevztahuje 14denní '
+            'lhůta pro odstoupení od smlouvy, protože se jedná o individuálně '
+            'sjednanou zakázku.'
+        ),
+        required=True,
+        error_messages={
+            'required': 'Je nutné souhlasit s podmínkami individuální objednávky.'
+        },
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
 
     class Meta:
         model = QuoteRequest
@@ -216,12 +228,6 @@ class QuoteRequestForm(PhoneValidationMixin, forms.ModelForm):
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'agreed_to_terms': (
-                'Souhlasím s tím, že se na tuto objednávku nevztahuje 14denní lhůta '
-                'pro odstoupení od smlouvy, protože se jedná o individuálně sjednanou zakázku.'
-            ),
         }
 
     def clean_quantity(self) -> int:

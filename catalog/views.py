@@ -56,15 +56,15 @@ def product_list(request: HttpRequest) -> HttpResponse:
 
 
 def product_detail(request: HttpRequest, slug: str) -> HttpResponse:
-    """Render the product detail page for an active product."""
-    product = get_object_or_404(
-        Product.objects.select_related('vat_rate', 'category__parent'),
-        slug=slug,
-        is_active=True,
-    )
-    return render(request, 'catalog/product_detail.html', {
-        'product': product,
-    })
+    """Render the product detail page. Staff with change permission
+    can also view inactive products.
+    """
+    queryset = Product.objects.select_related('vat_rate', 'category__parent')
+    if not request.user.has_perm('catalog.change_product'):
+        queryset = queryset.filter(is_active=True)
+
+    product = get_object_or_404(queryset, slug=slug)
+    return render(request, 'catalog/product_detail.html', {'product': product})
 
 
 # ===================== QUOTE VIEWS =====================

@@ -14,7 +14,11 @@
         {% endif %}
     </nav>
 
-    <h1 class="product-title">{{ product.name }}</h1>
+        <h1 class="product-title">{{ product.name }}</h1>
+
+        {% if not product.is_active and perms.catalog.change_product %}
+            <span class="badge badge-secondary">Neaktivní</span>
+        {% endif %}
 
      {# ---------- IMAGE ---------- #}
     <div class="product-image-wrapper">
@@ -42,6 +46,7 @@
     </div>
 
     {# ---------- ADD TO CART FORM ---------- #}
+    {% if product.is_active %}
     <div class="product-buy-box">
         <form action="{% url 'catalog:add_to_cart' product.id %}"
               method="post"
@@ -69,6 +74,7 @@
             </button>
         </form>
     </div>
+    {% endif %}
 
     {# ---------- PRODUCT DESCRIPTION ---------- #}
     {% if product.description %}

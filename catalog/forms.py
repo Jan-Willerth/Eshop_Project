@@ -4,6 +4,7 @@ from decimal import Decimal
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.utils.text import slugify
 
 from .models import (
     CompanyBillingProfile,
@@ -664,3 +665,38 @@ class ProductForm(forms.ModelForm):
         if stock is not None and stock < 0:
             raise forms.ValidationError('Skladové množství nemůže být záporné.')
         return stock
+
+    def clean_name(self):
+        """Reject characters outside letters, digits, spaces, and basic
+        punctuation (dash, en dash, comma, period, parentheses) — needed so
+        a valid slug can always be generated from the name.
+        """
+        name = self.cleaned_data.get('name', '')
+        if name and not re.match(r'^[\w\s,.()\-–]+$', name, flags=re.UNICODE):
+            raise forms.ValidationError(
+                'Název může obsahovat pouze písmena, číslice, mezery a '
+                'základní interpunkci (pomlčka, čárka, tečka, závorky). '
+                'Speciální znaky jako +, &, %, #, @, /, * nejsou povoleny.'
+            )
+        return name
+
+    def clean(self):
+        """Auto-generate a unique slug from the product name, overwriting
+        any manually entered value.
+        """
+        cleaned_data = super().clean()
+        name = cleaned_data.get('name')
+
+        if name:
+            base_slug = slugify(name)
+            slug = base_slug
+            existing_slugs = Product.objects.exclude(pk=self.instance.pk)
+            counter = 2
+            while existing_slugs.filter(slug=slug).exists():
+                slug = f'{base_slug}-{counter}'
+                counter += 1
+
+            cleaned_data['slug'] = slug
+            self.instance.slug = slug
+
+        return cleaned_data

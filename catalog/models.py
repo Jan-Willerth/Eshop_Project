@@ -3,10 +3,10 @@ import os
 from decimal import Decimal
 
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
@@ -317,7 +317,7 @@ class CompanyBillingProfile(models.Model):
         return self.company_name
 
 
-# ===================== SIGNALS =====================
+# ===================== ORDER HELPERS =====================
 def generate_invoice_pdf(order):
     """Generate a tax document PDF for an order (full for business, simplified for consumers)."""
     font_path_regular = os.path.join(settings.BASE_DIR, 'catalog', 'static', 'fonts', 'arial.ttf')
@@ -365,6 +365,9 @@ def generate_invoice_pdf(order):
         )
     y -= 40
 
+    # Build table rows from the shared order items data
+    items_data = build_order_items_data(order)
+
     rows = [
         [
             "Položka",
@@ -377,36 +380,16 @@ def generate_invoice_pdf(order):
         ]
     ]
 
-    for item in order.items.all():
+    for item in items_data:
         rows.append([
-            Paragraph(item.product.name, cell_style),
-            str(item.quantity),
-            f"{item.unit_price_net:.2f} Kč",
-            f"{item.vat_rate:.0f} %",
-            f"{item.unit_price_gross:.2f} Kč",
-            f"{item.unit_price_net * item.quantity:.2f} Kč",
-            f"{item.unit_price_gross * item.quantity:.2f} Kč",
+            Paragraph(item['name'], cell_style),
+            str(item['quantity']),
+            f"{item['unit_price_net']:.2f} Kč",
+            f"{item['vat_rate']:.0f} %",
+            f"{item['unit_price_gross']:.2f} Kč",
+            f"{item['total_price_net']:.2f} Kč",
+            f"{item['total_price_gross']:.2f} Kč",
         ])
-
-    rows.append([
-        Paragraph(f"Doprava ({order.shipping_method.name})", cell_style),
-        "1",
-        f"{order.shipping_price_net:.2f} Kč",
-        f"{order.shipping_vat_rate:.0f} %",
-        f"{(order.shipping_price_net * (1 + order.shipping_vat_rate / 100)):.2f} Kč",
-        f"{order.shipping_price_net:.2f} Kč",
-        f"{(order.shipping_price_net * (1 + order.shipping_vat_rate / 100)):.2f} Kč",
-    ])
-
-    rows.append([
-        Paragraph(f"Platba ({order.payment_method.name})", cell_style),
-        "1",
-        f"{order.payment_price_net:.2f} Kč",
-        f"{order.payment_vat_rate:.0f} %",
-        f"{order.payment_price_gross:.2f} Kč",
-        f"{order.payment_price_net:.2f} Kč",
-        f"{order.payment_price_gross:.2f} Kč",
-    ])
 
     table = Table(rows, colWidths=[130, 40, 75, 35, 75, 75, 75])
     table.setStyle(TableStyle([
@@ -437,33 +420,74 @@ def generate_invoice_pdf(order):
     return pdf
 
 
-@receiver(post_save, sender=Order)
-def send_order_confirmation(sender, instance, created, **kwargs):
-    """Send confirmation email with the tax document (daňový doklad / zjednodušený daňový doklad) attached."""
-    if not created:
-        return
-
-    is_business = bool(instance.billing_company_name)
+def send_order_confirmation(order):
+    """Send confirmation email with HTML layout and attached PDF invoice."""
+    is_business = bool(order.billing_company_name)
     document_label = 'Daňový doklad' if is_business else 'Zjednodušený daňový doklad'
     filename_prefix = 'danovy_doklad' if is_business else 'zjednoduseny_danovy_doklad'
 
-    subject = f'Potvrzení objednávky č. {instance.id}'
-    body = (
-        f'Děkujeme za objednávku. {document_label} '
-        f'k objednávce naleznete v příloze tohoto e-mailu.'
-    )
-    email = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=None,
-        to=[instance.customer_email],
-    )
+    subject = f'Potvrzení objednávky č. {order.id}'
+    from_email = settings.DEFAULT_FROM_EMAIL
+    recipient_list = [order.customer_email]
 
-    pdf = generate_invoice_pdf(instance)
-    email.attach(
-        f'{filename_prefix}_{instance.id}.pdf',
-        pdf,
+    order_items_data = build_order_items_data(order)
+
+    context = {
+        'order': order,
+        'order_items': order_items_data,
+        'document_label': document_label,
+        'vat_amount': order.total_price_gross - order.total_price_net,
+    }
+
+    html_content = render_to_string('catalog/emails/order_confirmation.html', context)
+    text_content = strip_tags(html_content)
+
+    msg = EmailMultiAlternatives(subject, text_content, from_email, recipient_list)
+    msg.attach_alternative(html_content, 'text/html')
+
+    pdf_content = generate_invoice_pdf(order)
+    msg.attach(
+        f'{filename_prefix}_{order.id}.pdf',
+        pdf_content,
         'application/pdf',
     )
 
-    email.send()
+    msg.send()
+
+
+def build_order_items_data(order):
+    """Build a list of order line data (products, shipping, payment) for use in both the PDF and the email."""
+    items_data = []
+
+    for item in order.items.all():
+        items_data.append({
+            'name': item.product.name,
+            'quantity': item.quantity,
+            'unit_price_net': item.unit_price_net,
+            'unit_price_gross': item.unit_price_gross,
+            'vat_rate': item.vat_rate,
+            'total_price_net': item.unit_price_net * item.quantity,
+            'total_price_gross': item.unit_price_gross * item.quantity,
+        })
+
+    items_data.append({
+        'name': f"Doprava ({order.shipping_method.name})",
+        'quantity': 1,
+        'unit_price_net': order.shipping_price_net,
+        'unit_price_gross': order.shipping_price_net * (1 + order.shipping_vat_rate / 100),
+        'vat_rate': order.shipping_vat_rate,
+        'total_price_net': order.shipping_price_net,
+        'total_price_gross': order.shipping_price_net * (1 + order.shipping_vat_rate / 100),
+    })
+
+    items_data.append({
+        'name': f"Platba ({order.payment_method.name})",
+        'quantity': 1,
+        'unit_price_net': order.payment_price_net,
+        'unit_price_gross': order.payment_price_gross,
+        'vat_rate': order.payment_vat_rate,
+        'total_price_net': order.payment_price_net,
+        'total_price_gross': order.payment_price_gross,
+    })
+
+    return items_data

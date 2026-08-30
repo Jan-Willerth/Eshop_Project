@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px; }
+        .header { background-color: #f8f9fa; padding: 15px; text-align: center; border-bottom: 1px solid #e0e0e0; }
+        .content { padding: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background-color: #f1f1f1; }
+        .totals { margin-top: 15px; text-align: right; }
+        .totals p { margin: 4px 0; }
+        .attachment-note { margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e0e0; }
+        .footer {   font-size: 12px;
+                    color: #777;
+                    text-align: center;
+                    margin-top: 20px;
+                    border-top: 1px solid #e0e0e0;
+                    padding-top: 10px;
+                }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>3D Print E-shop</h2>
+        </div>
+        <div class="content">
+            <p>Dobrý den,</p>
+            <p>děkujeme za Vaši objednávku <strong>č. {{ order.id }}</strong>. Níže naleznete její přehled:</p>
+
+           <table>
+                <tr>
+                    <th>Položka</th>
+                    <th>Počet</th>
+                    <th>Cena/ks bez DPH</th>
+                    <th>DPH</th>
+                    <th>Cena/ks s DPH</th>
+                    <th>Celkem bez DPH</th>
+                    <th>Celkem s DPH</th>
+                </tr>
+                {% for item in order_items %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.unit_price_net|floatformat:2 }} Kč</td>
+                    <td>{{ item.vat_rate|floatformat:2 }} %</td>
+                    <td>{{ item.unit_price_gross|floatformat:2 }} Kč</td>
+                    <td>{{ item.total_price_net|floatformat:2 }} Kč</td>
+                    <td>{{ item.total_price_gross|floatformat:2 }} Kč</td>
+                </tr>
+                {% endfor %}
+            </table>
+
+            <div class="totals">
+                <p>Celkem bez DPH: {{ order.total_price_net|floatformat:2 }} Kč</p>
+                <p>DPH celkem: {{ vat_amount|floatformat:2 }} Kč</p>
+                <p style="font-size: 16px;"><strong>Celkem k úhradě: {{ order.total_price_gross|floatformat:2 }} Kč</strong></p>
+            </div>
+
+            <p class="attachment-note">V příloze tohoto e-mailu naleznete také vygenerovanou fakturu.</p>
+        </div>
+        <div class="footer">
+            <p>Tento e-mail byl vygenerován automaticky, prosím neodpovídejte na něj.</p>
+            <p>&copy; 2026 3D Print E-shop</p>
+        </div>
+    </div>
+</body>
+</html>

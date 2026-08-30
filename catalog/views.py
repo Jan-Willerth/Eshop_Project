@@ -31,6 +31,7 @@ from .models import (
     Profile,
     ShippingMethod,
     generate_invoice_pdf,
+    send_order_confirmation,
 )
 
 
@@ -481,6 +482,8 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
                 Product.objects.filter(pk=item['product'].pk).update(
                     stock=F('stock') - item['quantity']
                 )
+
+            send_order_confirmation(order)
 
         request.session.pop('cart', None)
         request.session.pop('pending_order', None)

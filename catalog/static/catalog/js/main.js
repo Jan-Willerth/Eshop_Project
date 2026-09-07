@@ -8,6 +8,30 @@
  *   - AJAX quantity update and item removal on cart detail page
  */
 
+
+// ===================== COMPANY BILLING TOGGLE (shared) =====================
+/**
+ * Toggles visibility of company billing fields based on a checkbox state.
+ * Used on checkout, register, and profile_update pages.
+ *
+ * @param {string} checkboxId - id of the "billing_different" checkbox
+ * @param {string[]} fieldIds - ids of the company billing fields to show/hide
+ */
+function initCompanyBillingToggle(checkboxId, fieldIds) {
+    const checkbox = document.getElementById(checkboxId);
+    if (!checkbox) return;
+
+    function toggleFields() {
+        fieldIds.forEach(function (fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) field.closest('p').hidden = !checkbox.checked;
+        });
+    }
+
+    checkbox.addEventListener('change', toggleFields);
+    toggleFields();
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // ===================== DOM REFERENCES =====================
     const cartModal = document.getElementById('cart-modal');

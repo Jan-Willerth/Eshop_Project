@@ -15,8 +15,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const companyInvoiceCheckbox = document.getElementById('id_billing_different');
-        const companyFields = [
+        initCompanyBillingToggle('id_billing_different', [
             'id_billing_first_name',
             'id_billing_last_name',
             'id_billing_company_name',
@@ -25,19 +24,7 @@
             'id_billing_street',
             'id_billing_city',
             'id_billing_zip_code'
-        ];
-
-        function toggleCompanyFields() {
-            companyFields.forEach(function (fieldId) {
-                const field = document.getElementById(fieldId);
-                if (field) field.closest('p').hidden = !companyInvoiceCheckbox.checked;
-            });
-        }
-
-        if (companyInvoiceCheckbox) {
-            companyInvoiceCheckbox.addEventListener('change', toggleCompanyFields);
-            toggleCompanyFields();
-        }
+        ]);
     });
 </script>
 {% endblock %}

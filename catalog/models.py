@@ -197,6 +197,8 @@ class Order(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    billing_different = models.BooleanField(default=False)
+
     customer_email = models.EmailField()
     customer_phone = models.CharField(max_length=50)
     shipping_first_name = models.CharField(max_length=100)
@@ -328,7 +330,7 @@ def generate_invoice_pdf(order):
 
     cell_style = ParagraphStyle(name='CellStyle', fontName='DejaVu', fontSize=8, leading=10)
 
-    is_business = bool(order.billing_company_name)
+    is_business = order.billing_different
     document_title = "Daňový doklad" if is_business else "Zjednodušený daňový doklad"
 
     buf = io.BytesIO()
@@ -422,7 +424,7 @@ def generate_invoice_pdf(order):
 
 def send_order_confirmation(order):
     """Send confirmation email with HTML layout and attached PDF invoice."""
-    is_business = bool(order.billing_company_name)
+    is_business = order.billing_different
     document_label = 'Daňový doklad' if is_business else 'Zjednodušený daňový doklad'
     filename_prefix = 'danovy_doklad' if is_business else 'zjednoduseny_danovy_doklad'
 

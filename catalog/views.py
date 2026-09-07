@@ -460,6 +460,7 @@ def checkout_summary(request: HttpRequest) -> HttpResponse:
                 shipping_street=pending_order['shipping_street'],
                 shipping_city=pending_order['shipping_city'],
                 shipping_zip_code=pending_order['shipping_zip_code'],
+                billing_different=pending_order.get('billing_different', False),
                 billing_first_name=pending_order.get('billing_first_name', ''),
                 billing_last_name=pending_order.get('billing_last_name', ''),
                 billing_company_name=pending_order.get('billing_company_name', ''),
@@ -557,7 +558,7 @@ def order_invoice_download(request: HttpRequest, order_id: int) -> HttpResponse:
         id=order_id,
         user=request.user,
     )
-    is_business = bool(order.billing_company_name)
+    is_business = order.billing_different
     filename_prefix = (
         'danovy_doklad' if is_business else 'zjednoduseny_danovy_doklad'
     )

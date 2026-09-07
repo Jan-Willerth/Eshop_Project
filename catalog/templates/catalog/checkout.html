@@ -39,20 +39,14 @@
         const differentDeliveryCheckbox = document.getElementById('id_delivery_different');
 
         function toggleAddressFields() {
-            companyFields.forEach(function (fieldId) {
-                const field = document.getElementById(fieldId);
-                if (field) field.closest('p').hidden = !companyInvoiceCheckbox.checked;
-            });
+            setFieldsHidden(companyFields, !companyInvoiceCheckbox.checked);
 
             if (billingAddressIsDeliveryCheckbox) {
                 billingAddressIsDeliveryCheckbox.closest('p').hidden = !companyInvoiceCheckbox.checked;
                 if (!companyInvoiceCheckbox.checked) billingAddressIsDeliveryCheckbox.checked = false;
             }
 
-            deliveryFields.forEach(function (fieldId) {
-                const field = document.getElementById(fieldId);
-                if (field) field.closest('p').hidden = !differentDeliveryCheckbox.checked;
-            });
+            setFieldsHidden(deliveryFields, !differentDeliveryCheckbox.checked);
 
             if (differentDeliveryCheckbox.checked) {
                 billingAddressIsDeliveryCheckbox.checked = false;

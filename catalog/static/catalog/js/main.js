@@ -32,6 +32,21 @@ function initCompanyBillingToggle(checkboxId, fieldIds) {
     toggleFields();
 }
 
+/**
+ * Shows or hides a list of form fields (by id) via their wrapping <p>.
+ * Lower-level helper shared by pages with more complex toggle logic
+ * (e.g. checkout.html) that can't use initCompanyBillingToggle directly.
+ *
+ * @param {string[]} fieldIds - ids of the fields to show/hide
+ * @param {boolean} hidden - true to hide, false to show
+ */
+function setFieldsHidden(fieldIds, hidden) {
+    fieldIds.forEach(function (fieldId) {
+        const field = document.getElementById(fieldId);
+        if (field) field.closest('p').hidden = hidden;
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // ===================== DOM REFERENCES =====================
     const cartModal = document.getElementById('cart-modal');

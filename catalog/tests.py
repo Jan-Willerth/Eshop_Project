@@ -835,7 +835,7 @@ class OrderViewTestCase(TestCase):
         order = Order.objects.first()
         self.assertEqual(email.subject, f'Potvrzení objednávky č. {order.id}')
         self.assertIn('jan@example.com', email.to)
-        self.assertIn('Děkujeme za objednávku', email.body)
+        self.assertIn('Děkujeme za Vaši objednávku', email.body)
 
     def test_checkout_summary_post_sends_pdf_for_business_order(self):
         """POST sends a PDF invoice attachment when billing_different is True."""

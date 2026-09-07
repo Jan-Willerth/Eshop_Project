@@ -292,6 +292,7 @@ class Profile(models.Model):
     street = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=100, blank=True)
     zip_code = models.CharField(max_length=20, blank=True)
+    billing_different = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return f"Profil {self.user.email}"

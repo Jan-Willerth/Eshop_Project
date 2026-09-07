@@ -382,10 +382,10 @@ def checkout(request: HttpRequest) -> HttpResponse:
                     'shipping_city': profile.city,
                     'shipping_zip_code': profile.zip_code,
                 }
+                initial['billing_different'] = profile.billing_different
                 company_billing = getattr(profile, 'company_billing', None)
                 if company_billing:
                     initial.update({
-                        'billing_different': True,
                         'billing_first_name': company_billing.contact_first_name,
                         'billing_last_name': company_billing.contact_last_name,
                         'billing_company_name': company_billing.company_name,
@@ -613,6 +613,7 @@ def profile_update(request: HttpRequest) -> HttpResponse:
                 profile.street = data['street']
                 profile.city = data['city']
                 profile.zip_code = data['zip_code']
+                profile.billing_different = data['billing_different']
                 profile.save()
 
                 if data['billing_different']:
@@ -629,8 +630,6 @@ def profile_update(request: HttpRequest) -> HttpResponse:
                             'zip_code': data['billing_zip_code'],
                         },
                     )
-                elif company_billing:
-                    company_billing.delete()
 
             messages.success(request, 'Profil byl úspěšně aktualizován.')
             return redirect('catalog:profile_update')
@@ -644,9 +643,9 @@ def profile_update(request: HttpRequest) -> HttpResponse:
             'city': profile.city,
             'zip_code': profile.zip_code,
         }
+        initial['billing_different'] = profile.billing_different
         if company_billing:
             initial.update({
-                'billing_different': True,
                 'billing_first_name': company_billing.contact_first_name,
                 'billing_last_name': company_billing.contact_last_name,
                 'billing_company_name': company_billing.company_name,

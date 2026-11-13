@@ -16,6 +16,7 @@ media/
 .DS_Store
 Thumbs.db
 .env
+.env.prod
 
 # Static files
 staticfiles/

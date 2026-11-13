@@ -1,0 +1,195 @@
+from decimal import Decimal
+
+from django.contrib import messages
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+from django.views.decorators.http import require_POST
+
+from ..cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
+from ..forms import CartAddProductForm
+from ..models import Product
+
+
+# ===================== CART VIEWS =====================
+@require_POST
+def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
+    """Add a product to the cart or update its quantity (AJAX/redirect)."""
+    product = get_object_or_404(Product, id=product_id, is_active=True)
+
+    post_data = request.POST.copy()
+    if 'quantity' not in post_data:
+        post_data['quantity'] = 1
+    if 'override' not in post_data:
+        post_data['override'] = False
+
+    form = CartAddProductForm(post_data, product_stock=product.stock)
+
+    if form.is_valid():
+        cd = form.cleaned_data
+        quantity = cd['quantity']
+        override = cd['override']
+
+        cart = request.session.get('cart', {})
+        product_key = str(product.id)
+
+        overstock_confirmed = cd.get('overstock_confirmed', False)
+
+        if override:
+            new_quantity = quantity
+        else:
+            existing_entry = cart.get(product_key, 0)
+            existing_qty = (
+                existing_entry.get('quantity', 0)
+                if isinstance(existing_entry, dict)
+                else existing_entry
+            )
+            new_quantity = existing_qty + quantity
+
+        cart[product_key] = {
+            'quantity': new_quantity,
+            'overstock_confirmed': overstock_confirmed,
+        }
+
+        request.session['cart'] = cart
+        request.session.modified = True
+
+        items, total_qty, total_net, total_gross = calculate_cart_totals(cart)
+
+        stock_warning = None
+        is_overstock = new_quantity > product.stock
+
+        if product.stock == 0:
+            stock_warning = (
+                "Zboží není skladem. Předpokládaná dodací lhůta 3–5 pracovních dnů."
+            )
+        elif is_overstock:
+            stock_warning = (
+                f"Požadované množství ({new_quantity}) přesahuje skladové zásoby "
+                f"({product.stock}). Dodací lhůta může být prodloužena."
+            )
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            item_subtotal_net = (
+                product.price_net * new_quantity
+                if new_quantity > 0
+                else Decimal('0.00')
+            )
+            item_subtotal_gross = (
+                product.price_gross * new_quantity
+                if new_quantity > 0
+                else Decimal('0.00')
+            )
+
+            return JsonResponse({
+                'success': True,
+                'message': f'Produkt "{product.name}" byl přidán do košíku.',
+                'product_name': product.name,
+                'cart_total_quantity': total_qty,
+                'total_gross': f"{total_gross:.2f}",
+                'total_net': f"{total_net:.2f}",
+                'item_subtotal': f"{item_subtotal_gross:.2f}",
+                'item_subtotal_net': f"{item_subtotal_net:.2f}",
+                'item_subtotal_gross': f"{item_subtotal_gross:.2f}",
+                'item_quantity': new_quantity,
+                'stock_warning': stock_warning,
+                'is_overstock': is_overstock,
+                'overstock_confirmed': overstock_confirmed,
+                'stock': product.stock,
+            })
+
+        messages.success(
+            request,
+            f'Produkt "{product.name}" byl přidán do košíku.',
+        )
+        return redirect('catalog:cart_detail')
+
+    raw_quantity = request.POST.get('quantity', '1')
+    quote_url = (
+        reverse('catalog:custom_quote')
+        + f'?product={product.id}&quantity={raw_quantity}'
+    )
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        error_msg = "Opravte prosím chyby ve formuláři."
+        response_data = {'success': False, 'error': error_msg}
+
+        if 'quantity' in form.errors:
+            error_msg = form.errors['quantity'][0]
+            response_data = {
+                'success': False,
+                'error': error_msg,
+                'quote_url': quote_url,
+                'is_over_limit': True,
+                'over_limit_message': (
+                    f"Pro objednávky nad 99 ks (vámi zadaných {raw_quantity} ks) "
+                    "je nutné individuální posouzení.<br><br>"
+                    "Přejděte prosím na formulář nezávazné poptávky.<br><br>"
+                    "Při objednávce bude vyžadována platba předem a delší dodací lhůta."
+                ),
+            }
+        elif 'overstock_confirmed' in form.errors:
+            error_msg = form.errors['overstock_confirmed'][0]
+            response_data = {
+                'success': False,
+                'error': error_msg,
+                'error_field': 'overstock_confirmed',
+                'stock': product.stock,
+            }
+
+        return JsonResponse(response_data, status=400)
+
+    if request.POST.get('from_cart'):
+        redirect_url = reverse('catalog:cart_detail')
+    else:
+        redirect_url = reverse('catalog:product_detail', args=[product.slug])
+
+    error_msg = "Opravte prosím chyby ve formuláři."
+    if 'quantity' in form.errors:
+        error_msg = form.errors['quantity'][0]
+        error_msg += f' <a href="{quote_url}">Přejít na poptávkový formulář</a>'
+    elif 'overstock_confirmed' in form.errors:
+        error_msg = form.errors['overstock_confirmed'][0]
+
+    messages.error(request, mark_safe(error_msg))
+    return redirect(redirect_url)
+
+
+@require_POST
+def cart_remove(request: HttpRequest, product_id: int) -> HttpResponse:
+    """Remove a product completely from the session cart (AJAX/redirect)."""
+    product = get_object_or_404(Product, id=product_id)
+    cart = request.session.get('cart', {})
+    product_key = str(product.id)
+
+    if product_key in cart:
+        del cart[product_key]
+        request.session['cart'] = cart
+        request.session.modified = True
+
+    items, total_qty, total_net, total_gross = calculate_cart_totals(cart)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'cart_total_quantity': total_qty,
+            'total_gross': f"{total_gross:.2f}",
+            'total_net': f"{total_net:.2f}",
+        })
+
+    return redirect('catalog:cart_detail')
+
+
+def cart_detail(request: HttpRequest) -> HttpResponse:
+    """Render the shopping cart detail view with totals."""
+    cart = request.session.get('cart', {})
+    items, total_quantity, total_net, total_gross = calculate_cart_totals(cart)
+
+    return render(request, 'catalog/cart_detail.html', {
+        'items': items,
+        'total_quantity': total_quantity,
+        'total_net': total_net,
+        'total_gross': total_gross,
+        'has_unconfirmed_overstock': cart_has_unconfirmed_overstock(cart),
+    })

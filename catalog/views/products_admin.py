@@ -1,14 +1,9 @@
 from django.contrib.auth.decorators import login_required, permission_required
-
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from ..forms import (
-    ProductForm
-)
-from ..models import (
-    Product,
-)
+from ..forms import ProductForm
+from ..models import Product
 
 
 # ===================== PRODUCT MANAGEMENT (STAFF) =====================

@@ -11,8 +11,8 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
-from .cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
-from .forms import (
+from ..cart_utils import calculate_cart_totals, cart_has_unconfirmed_overstock
+from ..forms import (
     CartAddProductForm,
     OrderForm,
     ProfileUpdateForm,
@@ -20,7 +20,7 @@ from .forms import (
     RegistrationForm,
     ProductForm
 )
-from .models import (
+from ..models import (
     Category,
     CompanyBillingProfile,
     Order,

@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+
+# IDE settings
+.idea/
+
+# Version control
+.git/
+
+# Python byte-compiled / cache files
+__pycache__/
+*.py[cod]
+
+# Local database
+*.sqlite3
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Secrets (passed to the container via env_file)
+.env
+.env.prod

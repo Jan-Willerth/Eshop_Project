@@ -323,6 +323,43 @@ class CartViewsTestCase(TestCase):
         self.assertIn('error', data)
         self.assertIn('individuální poptávku', data['error'])
 
+    def test_add_to_cart_ajax_over_limit_quote_url_has_clean_quantity(self):
+        """Over-limit AJAX response links to the quote form with the
+        numeric quantity the customer entered.
+        """
+        url = reverse('catalog:add_to_cart', args=[self.product_secondary.id])
+        response = self.client.post(
+            url,
+            {'quantity': 150},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertTrue(
+            data['quote_url'].endswith(
+                f'?product={self.product_secondary.id}&quantity=150'
+            )
+        )
+        self.assertIn('150 ks', data['over_limit_message'])
+
+    def test_add_to_cart_does_not_reflect_html_in_quantity(self):
+        """HTML or script typed into the quantity field never appears in the
+        response, neither in the AJAX JSON nor on the redirected page.
+        """
+        url = reverse('catalog:add_to_cart', args=[self.product_secondary.id])
+        payload = '100<script>alert(1)</script>'
+
+        ajax_response = self.client.post(
+            url,
+            {'quantity': payload},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertNotIn('<script>alert(1)</script>', ajax_response.content.decode())
+
+        page_response = self.client.post(url, {'quantity': payload}, follow=True)
+        self.assertNotIn('<script>alert(1)</script>', page_response.content.decode())
+
     def test_update_cart_ajax(self):
         """AJAX update (override) returns recalculated JSON totals."""
         session = self.client.session

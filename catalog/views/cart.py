@@ -105,11 +105,11 @@ def add_to_cart(request: HttpRequest, product_id: int) -> HttpResponse:
         )
         return redirect('catalog:cart_detail')
 
-    raw_quantity = request.POST.get('quantity', '1')
-    quote_url = (
-        reverse('catalog:custom_quote')
-        + f'?product={product.id}&quantity={raw_quantity}'
-    )
+    try:
+        raw_quantity = int(request.POST.get('quantity', '1'))
+    except (TypeError, ValueError):
+        raw_quantity = 1
+    quote_url = (reverse('catalog:custom_quote') + f'?product={product.id}&quantity={raw_quantity}')
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         error_msg = "Opravte prosím chyby ve formuláři."

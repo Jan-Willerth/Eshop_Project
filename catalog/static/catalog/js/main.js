@@ -54,6 +54,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnContinueShopping = document.getElementById('btn-continue-shopping');
     const cartBadge = document.querySelector('.badge');
     const cartLink = document.querySelector('.btn-cart');
+    const goToCartBtnDefault = document.getElementById('btn-go-to-cart');
+    const defaultGoToCartText = goToCartBtnDefault ? goToCartBtnDefault.textContent : '';
+    const defaultGoToCartHref = goToCartBtnDefault ? goToCartBtnDefault.getAttribute('href') : '';
 
     // ===================== CART BADGE =====================
     function updateCartBadge(count) {
@@ -146,6 +149,12 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (modalProductName) {
                     modalProductName.textContent = data.message || `"${data.product_name}" byl přidán do košíku.`;
+                }
+
+                const goToCartBtn = document.getElementById('btn-go-to-cart');
+                if (goToCartBtn) {
+                    goToCartBtn.textContent = defaultGoToCartText;
+                    goToCartBtn.setAttribute('href', defaultGoToCartHref);
                 }
 
                 updateCartBadge(data.cart_total_quantity);

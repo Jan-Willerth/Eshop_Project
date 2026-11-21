@@ -1,20 +1,18 @@
 from decimal import Decimal
 
-from django.contrib.auth.models import Group, Permission, User
+from django.contrib.auth.models import User
 from django.core import mail
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
-from catalog.forms import OrderForm, ProductForm, RegistrationForm
+from catalog.forms import OrderForm
 from catalog.models import (
     Category,
     Order,
-    OrderItem,
-    OrderStatus,
     PaymentMethod,
     Product,
-    Profile,
     ShippingMethod,
+    OrderStatus,
     VatRate,
 )
 
@@ -168,6 +166,7 @@ class OrderFormTestCase(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn('payment_method', form.errors)
+
 
 
 # ===================== ORDER VIEW TESTS =====================

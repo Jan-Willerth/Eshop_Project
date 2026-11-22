@@ -1,4 +1,5 @@
 # 3D Print E-shop 🛒
+![Tests](https://github.com/Jan-Willerth/Eshop_Project/actions/workflows/tests.yml/badge.svg?branch=master)
 
 A fully functional e-shop focused on selling 3D printing filaments and accessories, created as part of web development studies. The project is built on the Django framework and tailored for local development using MySQL and production deployment on PythonAnywhere (SQLite).
 
